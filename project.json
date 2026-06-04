@@ -1,0 +1,28 @@
+{
+    "framework": {
+        "repository": "https://github.com/CaptSiro/route-chasm.git",
+        "branch": "main"
+    },
+    "template": {
+        "data": {},
+        "project": {
+            "components": {},
+            "controllers": {},
+            "models": {},
+            "bootstrap.php": "<framework>/bin/bootstrap-project.php"
+        },
+        "public": {
+            "css": {},
+            "images": {},
+            "js": {}
+        },
+        "index.php": "<framework>/bin/index.php"
+    },
+    "mount": {
+        "assets": "./public",
+        "framework": "./framework",
+        "storage": "./data",
+        "project": "./project",
+        "www": "./../"
+    }
+}
