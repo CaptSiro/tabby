@@ -80,7 +80,7 @@ function template_create(array $json, string $root, array $template): void {
         $path = $root . DIRECTORY_SEPARATOR . $entry;
 
         if (is_string($item)) {
-            if (!is_null($source = project_mounted($json, $item))) {
+            if (!is_null($source = project_mounted($item, $json))) {
                 file_copy($source, $path);
             }
 
@@ -121,9 +121,9 @@ $command = $argv[1] ?? null;
 
 
 function command_init(array $project, string $root): void {
-    $repository = json_get($project, "framework.repository");
-    $mount = json_get($project, "mount.framework");
-    $branch = json_get($project, "framework.branch") ?? "main";
+    $repository = project_get("framework.repository", $project);
+    $mount = project_get("mount.framework", $project);
+    $branch = project_get("framework.branch", $project) ?? "main";
 
     if (is_null($repository) || is_null($mount)) {
         error("framework.repository or framework.location is not defined in project.json");
@@ -133,7 +133,7 @@ function command_init(array $project, string $root): void {
         error("Execution of 'git subtree' command failed");
     }
 
-    template_create($project, $root, json_get($project, "template") ?? []);
+    template_create($project, $root, project_get("template", $project) ?? []);
 
     $program = $argv[0] ?? basename(__FILE__);
     message("Run '$program env docker|native' to create environment");
@@ -156,11 +156,11 @@ function command_env_set_variable(string $file, string $variable, string $value)
 }
 
 function command_env_copy_files(array $project, string $root, string $environment): void {
-    if (!is_null($env = project_mounted($project, "<framework>/bin/.env.$environment"))) {
+    if (!is_null($env = project_mounted("<framework>/bin/.env.$environment", $project))) {
         file_copy($env, $root .'/.env', true);
     }
 
-    if (!is_null($htaccess = project_mounted($project, "<framework>/bin/.htaccess.$environment"))) {
+    if (!is_null($htaccess = project_mounted("<framework>/bin/.htaccess.$environment", $project))) {
         file_copy($htaccess, $root .'/.htaccess', true);
     }
 }
@@ -175,11 +175,11 @@ function command_env(array $project, string $root, ?string $environment = null):
         case "native": {
             command_env_copy_files($project, $root, $environment);
 
-            if (is_null($www = json_get($project, "mount.www"))) {
+            if (is_null($www = project_get("mount.www", $project))) {
                 break;
             }
 
-            if (is_null($www = project_mounted($project, $www))) {
+            if (is_null($www = project_mounted($www, $project))) {
                 break;
             }
 
@@ -214,9 +214,9 @@ function command_env(array $project, string $root, ?string $environment = null):
 }
 
 function command_update(array $project): void {
-    $repository = json_get($project, "framework.repository");
-    $mount = json_get($project, "mount.framework");
-    $branch = json_get($project, "framework.branch") ?? "main";
+    $repository = project_get("framework.repository", $project);
+    $mount = project_get("mount.framework", $project);
+    $branch = project_get("framework.branch", $project) ?? "main";
 
     if (is_null($repository) || is_null($mount)) {
         error("framework.repository or framework.location is not defined in project.json");
@@ -239,7 +239,7 @@ switch ($command) {
     }
 
     case "clean": {
-        template_delete($root, json_get($project, "template") ?? []);
+        template_delete($root, project_get("template", $project) ?? []);
         file_remove($root .'/.env');
         file_remove($root .'/.htaccess');
         break;

@@ -23,6 +23,7 @@
         "framework": "./framework",
         "storage": "./data",
         "project": "./project",
+        "project-bootstrap": "./project/bootstrap.php",
         "www": "./../"
     }
 }

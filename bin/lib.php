@@ -1,6 +1,7 @@
 <?php
 
 const FILE_PROJECT_JSON = __DIR__ . '/../project.json';
+const DIRECTORY_PROJECT = __DIR__ . '/..';
 
 
 
@@ -9,6 +10,8 @@ function is_cli(): bool {
 }
 
 define("EOL", is_cli() ? PHP_EOL : "<br>");
+
+
 
 function error(string $message): void {
     echo "[Error]: $message" . EOL;
@@ -30,12 +33,23 @@ function execute(string $command, bool $simulate = true): int {
     return $code;
 }
 
-function project_json(): ?array {
-    if (($content = file_get_contents(FILE_PROJECT_JSON)) === false) {
+
+
+$lib_project_file = null;
+$lib_project_json = null;
+
+function project_json(string $file = FILE_PROJECT_JSON): ?array {
+    global $lib_project_json, $lib_project_file;
+    if (!is_null($lib_project_json) && $lib_project_file === $file) {
+        return $lib_project_json;
+    }
+
+    if (($content = file_get_contents($file)) === false) {
         return null;
     }
 
-    return json_decode($content, associative: true);
+    $lib_project_file = $file;
+    return $lib_project_json = json_decode($content, associative: true);
 }
 
 function json_get(array $json, string $path): mixed {
@@ -63,6 +77,10 @@ function json_get(array $json, string $path): mixed {
     return $current;
 }
 
+function project_get(string $path, ?array $json = null): mixed {
+    return json_get($json ?? project_json(), $path);
+}
+
 function json_get_or_die(array $json, string $path, ?string $file = null): mixed {
     if (is_null($value = json_get($json, $path))) {
         if (is_null($file)) {
@@ -77,9 +95,23 @@ function json_get_or_die(array $json, string $path, ?string $file = null): mixed
     return $value;
 }
 
-function project_mounted(array $json, string $path): ?string {
+function project_get_or_die(string $path, ?array $json = null, ?string $file = null): mixed {
+    return json_get_or_die($json ?? project_json(), $path, $file);
+}
+
+function project_mounted(string $path, ?array $json = null): ?string {
+    $json ??= project_json();
+
+    if (is_null($json)) {
+        return null;
+    }
+
     if (preg_match("/.*<([a-zA-Z0-9-_]+)>.*/", $path, $matches)) {
         if (!is_null($mount = json_get($json, "mount.$matches[1]"))) {
+            if (trim($mount) === "./") {
+                $mount = __DIR__ .'/..';
+            }
+
             $path = str_replace("<$matches[1]>", $mount, $path);
         }
     }
@@ -96,14 +128,14 @@ function project_mounted(array $json, string $path): ?string {
 }
 
 function project_version(): string {
-    $unknownVersion = "Unknown version";
+    $versionFile = __DIR__ .'/../VERSION';
 
-    if (is_null($json = project_json())) {
-        return $unknownVersion;
+    if (!is_null($ver = project_mounted("<framework>/VERSION"))) {
+        $versionFile = $ver;
     }
 
-    if (is_null($versionFile = project_mounted($json, "<framework>/VERSION"))) {
-        return $unknownVersion;
+    if (!file_exists($versionFile)) {
+        return "Unknown version";
     }
 
     return file_get_contents($versionFile);
