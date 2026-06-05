@@ -1,6 +1,11 @@
 <?php
 
-const FILE_PROJECT_JSON = __DIR__ . '/../project.json';
+
+
+define("FILE_PROJECT_JSON", file_exists(__DIR__ . '/../project-dev.json')
+    ? __DIR__ . '/../project-dev.json'
+    : __DIR__ . '/../project.json');
+
 const DIRECTORY_PROJECT = __DIR__ . '/..';
 
 

@@ -1,5 +1,8 @@
 .git
 .gitignore
 .idea
-data
+
+data/
 todo
+
+project-dev.json
