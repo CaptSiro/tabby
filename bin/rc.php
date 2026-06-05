@@ -129,6 +129,10 @@ function command_init(array $project, string $root): void {
         error("framework.repository or framework.location is not defined in project.json");
     }
 
+    if (str_starts_with($mount, "./")) {
+        $mount = substr($mount, 2);
+    }
+
     if (execute("git subtree add --prefix=$mount $repository $branch", !is_cli()) > 0) {
         error("Execution of 'git subtree' command failed");
     }
