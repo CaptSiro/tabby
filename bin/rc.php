@@ -226,6 +226,10 @@ function command_update(array $project): void {
         error("framework.repository or framework.location is not defined in project.json");
     }
 
+    if (str_starts_with($mount, "./")) {
+        $mount = substr($mount, 2);
+    }
+
     if (execute("git subtree pull --prefix=$mount $repository $branch", !is_cli()) > 0) {
         error("Execution of 'git subtree' command failed");
     }
