@@ -1,0 +1,63 @@
+<?php /** @var Frame $this */
+
+use components\Admin\Admin;
+use components\Icon;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use project\components\Frame;
+
+Css::import($this->getResource('../tabby.css'));
+Javascript::import($this->getResource('../tabby.js'));
+Frame::importAssets();
+
+$this->loadWidgets($this->getResource('widgets'));
+
+?><div class="widgets">
+    <div class="container">
+        <div class="row">
+            <?php if (!is_null($projectUrl = $this->getProjectUrl())): ?>
+                <a href="<?= $projectUrl ?>">
+                    <?= $this->getProjectName() ?>
+                </a>
+            <?php endif; ?>
+
+            <?php if (!is_null($adminUrl = $url = Admin::getInstance()->createUrl())): ?>
+                <a href="<?= $adminUrl ?>">
+                    <?= $this->tr('Admin') ?>
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="handle">
+        <div class="fill" x-init="tabby_resizeHandle" data-index="0" data-sign="+1" data-range="75,500"></div>
+    </div>
+</div>
+
+<div class="layers">
+    <div class="background">
+        <img
+            id="background-image"
+            src="<?= $this->getImage('transparent.png') ?>"
+            data-default="<?= $this->getImage('image.png') ?>"
+            alt="background"
+        >
+    </div>
+
+    <div class="content"></div>
+
+    <div class="controls">
+        <button class="edit-toggle" onclick="tabby_editToggle()">
+            <?= Icon::nf('nf-fa-cog') ?>
+        </button>
+    </div>
+</div>
+
+<div class="inspector-container">
+    <div class="handle">
+        <div class="fill" x-init="tabby_resizeHandle" data-index="1" data-sign="-1" data-range="75,500"></div>
+    </div>
+
+    <div class="inspector">
+    </div>
+</div>
