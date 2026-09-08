@@ -1,0 +1,99 @@
+:root {
+    --window-container-0: var(--container-0);
+    --window-container-1: var(--container-1);
+    --window-accent-0: var(--accent-0);
+    --window-text-0: var(--text-0);
+}
+
+.window-overlay,
+.window-overlay-active {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+}
+
+.window-overlay.inert,
+.window-overlay-active.inert {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.window {
+    pointer-events: all;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    background-color: var(--window-container-0);
+    border: 2px solid var(--window-accent-0);
+    overflow: auto;
+}
+
+.window .head {
+    width: 100%;
+    flex-wrap: nowrap;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    background-color: var(--window-container-1);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.window.draggable .head:hover {
+    cursor: grab;
+}
+
+.window .head > span {
+    padding: 8px;
+}
+
+.window .head .controls button {
+    all: unset;
+    cursor: default;
+    background-color: transparent;
+    color: var(--window-text-0);
+    padding: 8px;
+}
+
+.window .head .controls button:hover {
+    cursor: pointer;
+    background-color: var(--window-accent-0);
+}
+
+.window .content {
+    width: 100%;
+    height: calc(100% - 44px);
+}
+
+.text-window {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+}
+
+.text-window .controls {
+    flex-wrap: nowrap;
+    display: flex;
+    justify-content: flex-end;
+    gap: calc(var(--gap) / 2);
+}
+
+.content-window {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+}
+
+.content-window .controls {
+    padding: 16px;
+    flex-wrap: nowrap;
+    display: flex;
+    justify-content: flex-end;
+    gap: calc(var(--gap) / 2);
+}

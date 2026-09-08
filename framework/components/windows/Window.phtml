@@ -1,0 +1,48 @@
+<?php /** @var Window $this */
+
+use components\Icon;
+use components\windows\Window;
+use core\sideloader\importers\Css\Css;
+use core\view\Html;
+
+Css::import($this->getResource('window.css'));
+
+?><?php if ($this->openButton): ?>
+    <button onclick="window_open($('#<?= $this->id ?>'))">
+        <?= Html::escape($this->tr('Open')) ?> <?= Html::escape($this->title) ?>
+    </button>
+<?php endif; ?>
+
+<div
+    class="window hide"
+    id="<?= $this->id ?>"
+
+    <?php if ($this->hasFlag(Window::FLAG_DRAGGABLE)): ?>
+        data-window-draggable="true"
+    <?php endif; ?>
+
+    <?php if ($this->hasFlag(Window::FLAG_DESTROY_ON_CLOSE)): ?>
+        data-window-destroy-on-close="true"
+    <?php endif; ?>
+
+    <?= $this->stringifyAttributes() ?>
+>
+    <div class="head">
+        <span><?= Html::escape($this->title) ?></span>
+
+        <div class="controls">
+            <?php if ($this->hasFlag(Window::FLAG_MINIMIZABLE)): ?>
+                <button class="minimize">
+                    <?= Icon::nf('nf-fa-window_minimize', '_') ?>
+                </button>
+            <?php endif; ?>
+            <button class="close">
+                <?= Icon::nf('nf-fa-close', 'X') ?>
+            </button>
+        </div>
+    </div>
+
+    <div class="content">
+        <?= $this->content->render() ?>
+    </div>
+</div>

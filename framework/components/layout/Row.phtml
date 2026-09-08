@@ -1,0 +1,11 @@
+<?php /** @var Row $this */
+
+use components\layout\Row;
+
+?><div
+    class="form-row <?= $this->getCssClass() ?>"
+    <?= $this->stringifyAttributes() ?>
+    <?= $this->getStyle() ?>
+>
+    <?= $this->renderViews() ?>
+</div>

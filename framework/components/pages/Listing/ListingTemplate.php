@@ -1,0 +1,70 @@
+<?php
+
+namespace components\pages\Listing;
+
+use components\Message\Message;
+use components\nexus\NexusEditorBehavior;
+use components\pages\PagePreview;
+use components\pages\PageTemplate;
+use components\pages\Wireframe;
+use core\actions\Action;
+use core\RouteChasmEnvironment;
+use core\view\Component;
+use core\view\PageView;
+use core\view\View;
+use models\Language\Language;
+use models\Page\Page;
+use models\Setting\Setting;
+use const models\extensions\Editable\PROPERTY_EDITABLE;
+
+class ListingTemplate implements PageTemplate {
+    use PagePreview;
+
+    public const DATA_CONTENT = 'article.md';
+    public const NAME_PORTION_SIZE = 'route-chasm-core:number_of_articles_per_listing_page';
+
+
+
+    public function getName(): string {
+        return "Page Listing";
+    }
+
+    public function getDescription(): string {
+        return "Lists all direct children pages that are available for the user to see";
+    }
+
+    public function create(Page $page): ?View {
+        return null;
+    }
+
+    public function delete(Page $page): ?View {
+        return null;
+    }
+
+    public function hasEditor(): bool {
+        return false;
+    }
+
+    public function buildEditor(Page $page): Action {
+        return PageView::fromComponent(new Message('Page Listing has no content editor associated with its template'));
+    }
+
+    public function buildEditorBehavior(): ?NexusEditorBehavior {
+        return null;
+    }
+
+    public function buildContent(Page $page, Language $language): Component {
+        $portionSize = Setting::fromName(
+            self::NAME_PORTION_SIZE,
+            true,
+            RouteChasmEnvironment::LISTING_PORTION_SIZE,
+            [PROPERTY_EDITABLE => true]
+        );
+
+        return new Listing(
+            $page,
+            Wireframe::getLocalization($page, $language),
+            $portionSize->toInt()
+        );
+    }
+}

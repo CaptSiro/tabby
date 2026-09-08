@@ -1,0 +1,42 @@
+<?php /** @var Grid $this */
+
+use components\layout\Grid\Grid;
+use core\sideloader\importers\Css\Css;
+use core\view\Html;
+
+Css::importDefault($this);
+
+?><?php if (!empty($this->columns)): ?>
+    <div
+        class="grid"
+        style="grid-template-columns: <?= $this->getColumnTemplate() ?>;"
+    >
+        <?php if ($this->hasFlag(Grid::FLAG_SHOW_HEADER)): ?>
+            <div class="grid-header">
+                <?php foreach ($this->columns as $column): ?>
+                    <h4><?= Html::escape($column->getLabel()) ?></h4>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php foreach ($this->rows as $row): ?>
+            <div class="grid-row">
+                <?php $this->proxy->setItem($row); ?>
+                <?php foreach ($this->columns as $name => $label): ?>
+                    <?php $value = $this->proxy->getValue($name) ?>
+                    <?php if ($value !== ''): ?>
+                        <?= $value ?>
+                    <?php else: ?>
+                        <div></div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        <?php endforeach; ?>
+
+        <?php if (!is_null($this->footer)): ?>
+            <div class="grid-footer">
+                <?= $this->footer ?>
+            </div>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>

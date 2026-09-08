@@ -1,0 +1,56 @@
+<?php /** @var SideLoaderApi $this */
+
+use core\sideloader\api\SideLoaderApi;
+use core\sideloader\SideLoader;
+
+?><script>
+    /**
+     * @typedef {(files: string[], type: string) => void} Require
+     */
+
+    class SideLoader {
+        /**
+         * @type {Map<string, Require>}
+         */
+        static #importers = new Map();
+        static #importUrl = "<?= addslashes($this->importUrl) ?>";
+
+
+
+        static getRequireHeader() {
+            return "<?= addslashes(SideLoader::HEADER_X_REQUIRE) ?>";
+        }
+
+        static getImporterClass() {
+            return "<?= addslashes(SideLoader::IMPORTER_CSS_CLASS) ?>";
+        }
+
+        /**
+         * @param {string} type
+         * @param {Require} fn
+         */
+        static addImporter(type, fn) {
+            SideLoader.#importers.set(type, fn);
+        }
+
+        /**
+         * @param {string} type
+         * @return {Require | undefined}
+         */
+        static getImporter(type) {
+            return SideLoader.#importers.get(type);
+        }
+
+        /**
+         * @param {string} type
+         * @param {string[]} files
+         * @return {string}
+         */
+        static createImportUrl(type, files) {
+            const url = new URL(SideLoader.#importUrl, document.baseURI);
+            url.searchParams.set('type', type);
+            url.searchParams.set('files', files.join('<?= SideLoader::FILE_SEPARATOR ?>'));
+            return url.toString();
+        }
+    }
+</script>

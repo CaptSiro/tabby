@@ -1,0 +1,46 @@
+:root {
+    --grid-container-0: var(--container-0);
+    --grid-container-1: var(--container-1);
+    --grid-container-2: var(--container-2);
+    --grid-accent-0: var(--accent-0);
+    --grid-accent-1: var(--accent-1);
+}
+
+.grid {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--grid-container-0);
+    border: 2px solid var(--grid-container-1);
+}
+
+.grid-row,
+.grid-header {
+    display: grid;
+    grid-template-columns: inherit;
+    text-overflow: ellipsis;
+}
+
+.grid-row:nth-child(odd) {
+    background-color: var(--grid-container-1);
+}
+
+.grid-row:hover {
+    background-color: var(--grid-container-2);
+}
+
+.grid-row.selected {
+    background-color: var(--grid-accent-1);
+}
+
+.grid-row > *,
+.grid-row > *:hover {
+    padding: 8px;
+}
+
+.grid-header {
+    background-color: var(--grid-accent-0);
+}
+
+.grid-header > * {
+    padding: 16px 8px;
+}

@@ -1,0 +1,40 @@
+<?php /** @var HeaderSearch $this */
+
+use components\Icon;
+use components\Search\HeaderSearch;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
+
+Css::importDefault($this);
+Javascript::importDefault($this);
+
+?><div
+    class="header-search"
+    x-init="search_headerSearch"
+    <?php if (!is_null($this->url)): ?>
+        data-url="<?= $this->url ?>"
+    <?php endif; ?>
+    data-min-length="<?= $this->minLength ?>"
+>
+    <div class="header-search-form">
+        <input
+            id="header-search"
+            class="header-search-input"
+            type="search"
+            name="q"
+            placeholder="<?= Html::escapeAttribute($this->tr($this->placeholder)) ?>"
+            autocomplete="off"
+        >
+
+        <label class="header-search-button" for="header-search">
+            <?= Icon::nf('nf-fa-search') ?>
+        </label>
+    </div>
+
+    <div class="header-search-dropdown">
+        <div class="search-empty">
+            <?= Html::escape($this->tr('No results found')) ?>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,34 @@
+<?php /** @var FileSystemDropArea $this */
+
+use components\fs\FileSystemDropArea;
+use core\fs\FileServer;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
+
+Javascript::importDefault($this);
+Css::importDefault($this);
+
+?><div
+    class="fs-drop-area"
+    x-init="fs_dropArea_init"
+    data-directory="<?= $this->directory?->id ?? 0 ?>"
+    data-accept="<?= Html::escapeAttribute($this->acceptFileType) ?>"
+    data-upload="<?= FileServer::getInstance()->createFileUploadUrl($this->directory) ?>"
+>
+    <div class="content">
+        <?= $this->renderViews() ?>
+    </div>
+
+    <div class="overlays center">
+        <div class="drop-overlay-single center">
+            <span><?= Html::escape($this->tr('Upload file')) ?></span>
+        </div>
+
+        <div class="drop-overlay-multiple center">
+            <span><?= Html::escape($this->tr('Upload files')) ?></span>
+        </div>
+
+        <div class="upload-overlay"></div>
+    </div>
+</div>

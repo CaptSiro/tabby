@@ -1,0 +1,159 @@
+header {
+    position: sticky;
+    top: 0;
+    background: var(--container-1);
+    border-bottom: 1px solid var(--container-2);
+}
+
+.header-items {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: 0 var(--gap);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+}
+
+.header-menu-wrapper > .menu {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--gap) * 2);
+}
+
+header .menu-item {
+    position: relative;
+}
+
+header .menu-item > .head .item-label a {
+    display: inline-block;
+    padding: 0.5rem 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--text-1);
+    transition: color 0.2s ease;
+}
+
+header .menu-item > .head .item-label a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-0), var(--accent-3));
+    transition: width 0.25s ease;
+}
+
+header .menu-item:hover > .head .item-label a {
+    color: var(--text-0);
+}
+
+header .menu-item:hover > .head .item-label a::after {
+    width: 100%;
+}
+
+header .menu-item.has-sub-menu > .menu {
+    position: absolute;
+    top: calc(100% + 14px);
+    left: 0;
+    min-width: 220px;
+    padding: var(--gap-smaller);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-smaller);
+
+    background: var(--container-1);
+    border: 1px solid var(--container-2);
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+    opacity: 0;
+    transform: translateY(10px);
+    visibility: hidden;
+    transition:
+            opacity 0.18s ease,
+            transform 0.18s ease,
+            visibility 0s linear 0.18s;
+}
+
+header .menu-item.has-sub-menu:hover > .menu {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+            opacity 0.18s ease,
+            transform 0.18s ease,
+            visibility 0s;
+}
+
+header .menu-item.has-sub-menu > .menu .menu-item {
+    width: 100%;
+}
+
+header .menu-item.has-sub-menu > .menu .item-label a {
+    display: block;
+    padding: var(--gap-smaller);
+    border-radius: var(--border-radius-smaller);
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--text-1);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+header .menu-item.has-sub-menu > .menu .item-label a::after {
+    display: none;
+}
+
+header .menu-item.has-sub-menu > .menu .item-label a:hover {
+    background: var(--accent-0);
+    color: var(--text-0);
+    transition: background 0ms ease, color 0ms ease;
+}
+
+header .menu-item.has-sub-menu > .menu .menu-item.has-sub-menu > .menu {
+    top: 0;
+    left: calc(100% + 10px);
+}
+
+header .menu-item.has-sub-menu > .head .item-label a::before {
+    content: "▾";
+    font-size: 0.6rem;
+    margin-left: 0.4rem;
+    opacity: 0.6;
+}
+
+@media (max-width: 900px) {
+    header {
+        position: static;
+    }
+
+    header .header-items {
+        height: unset;
+        flex-direction: column;
+        padding: var(--gap) 0;
+    }
+
+    .header-menu-wrapper > .menu {
+        align-items: start;
+        flex-direction: column;
+        gap: unset;
+    }
+
+    header .menu-item.has-sub-menu > .menu {
+        position: relative;
+        pointer-events: auto;
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding: var(--gap-smaller);
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+        visibility: visible !important;
+    }
+
+    header .menu-item > .head .item-label a::after {
+        background: transparent !important;
+    }
+}

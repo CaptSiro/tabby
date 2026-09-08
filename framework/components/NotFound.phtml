@@ -1,0 +1,17 @@
+<?php /** @var NotFound $this */
+
+use components\Message\Message;
+use components\NotFound;
+use core\view\Html;
+
+?><div class="page-container">
+    <div class="page-section column">
+        <?= new Message($this->getTitle()) ?>
+
+        <div>
+            <button onclick="history.back()">
+                <?= Html::escape($this->tr('Go back')) ?>
+            </button>
+        </div>
+    </div>
+</div>

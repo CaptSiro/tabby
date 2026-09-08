@@ -1,0 +1,25 @@
+<?php /** @var File $this */
+
+use components\forms\controls\File;
+use core\view\Html;
+
+?><label class="form-file" x-init="form_file">
+    <span>Drag and drop files, or click to select</span>
+
+    <input
+        class="hide"
+        type="<?= Html::escapeAttribute($this->type) ?>"
+        name="<?= Html::escapeAttribute($this->name) ?>"
+        id="<?= Html::escapeAttribute($this->getId()) ?>"
+        <?= $this->stringifyAttributes() ?>
+    >
+
+    <span class="form-files">
+        <?php foreach ($this->files as $file): ?>
+            <div class="tag">
+                <span><?= $file ?></span>
+                <button>✕</button>
+            </div>
+        <?php endforeach; ?>
+    </span>
+</label>

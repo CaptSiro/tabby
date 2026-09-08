@@ -1,0 +1,24 @@
+<?php /** @var ArticleEditor $this */
+
+use components\pages\Article\ArticleEditor;
+use core\RouteChasmEnvironment;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
+
+Javascript::importDefault($this);
+
+?><div class="article-editor">
+    <div class="row pad-gap">
+        <a
+            class="button"
+            href="<?= $this->page->getUrlToModel(RouteChasmEnvironment::MOUNT_DEFAULT_CONTEXT) ?>"
+            target="_blank"
+        >
+            <?= Html::escape($this->tr('View on web')) ?>
+        </a>
+    </div>
+
+    <?= $this->createAiGeneration() ?>
+
+    <?= $this->createEditorEnvironment() ?>
+</div>

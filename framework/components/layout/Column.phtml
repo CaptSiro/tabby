@@ -1,0 +1,11 @@
+<?php /** @var Column $this */
+
+use components\layout\Column;
+
+?><div
+    class="form-column <?= $this->getCssClass() ?>"
+    <?= $this->stringifyAttributes() ?>
+    <?= $this->getStyle() ?>
+>
+    <?= $this->renderViews() ?>
+</div>

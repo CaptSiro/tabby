@@ -1,0 +1,11 @@
+<?php /** @var Link $this */
+
+use components\forms\controls\Link;
+use core\view\Html;
+
+?><a
+    class="<?= $this->getCssClass() ?>"
+    <?= $this->stringifyAttributes() ?>
+>
+    <?= Html::escape($this->label) ?>
+</a>

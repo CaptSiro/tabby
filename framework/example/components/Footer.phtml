@@ -1,0 +1,32 @@
+<?php /** @var Footer $this */
+
+use example\components\Footer;
+use core\sideloader\importers\Css\Css;
+use core\view\Html;
+
+Css::importDefault($this);
+
+?><footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <div class="footer-logo"><?= $this->getProjectName() ?></div>
+            <p class="footer-description">
+                <?= Html::escape($this->tr('PHP framework built for structured systems and long-term maintainability.')) ?>
+            </p>
+        </div>
+
+        <div class="footer-navigation">
+            <?= $this->menu ?>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <?= $this->getAdminLoginLink() ?>
+
+        <div class="footer-copy">© 2026 <?= Html::escape($this->getProjectName()) ?>. <?= Html::escape($this->tr('All rights reserved.')) ?></div>
+
+        <div class="footer-legal">
+            <?= $this->legal ?>
+        </div>
+    </div>
+</footer>

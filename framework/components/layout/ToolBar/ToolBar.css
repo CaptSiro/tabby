@@ -1,0 +1,147 @@
+.lock {
+    pointer-events: none;
+}
+
+.tool-bar {
+    background-color: var(--accent-0);
+}
+
+/*? dropdown */
+.tool-bar .menu-item {
+    position: relative;
+    color: var(--text-0);
+}
+
+.tool-bar .dropdown-item {
+    padding: 4px 8px 4px 20px;
+    position: relative;
+    border-radius: var(--border-radius-smaller);
+
+    transition: background-color 250ms;
+}
+
+.tool-bar .dropdown-item:hover {
+    cursor: pointer;
+    background-color: var(--container-2);
+
+    transition: background-color 0ms;
+}
+
+.tool-bar .has-sub-menu > .dropdown-item::before {
+    content: '>';
+    font-family: 'Lato', sans-serif;
+    font-size: larger;
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    transform: translate(0%, -50%);
+}
+
+.tool-bar .dropdown-item.next-section {
+    margin-top: 1.5em;
+}
+
+.tool-bar .dropdown-item > span.hint {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translate(0, -50%);
+    color: var(--text-1);
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.tool-bar .dropdown {
+    display: block;
+    visibility: hidden;
+    position: absolute;
+    left: calc(100% - 50px);
+    top: 0;
+    right: unset;
+    bottom: unset;
+    min-width: 150px;
+    background-color: var(--container-0);
+    padding: 4px;
+    border-radius: var(--border-radius-smaller);
+    border: 2px solid var(--container-2);
+    z-index: 0;
+    opacity: 0;
+
+    transition:
+            visibility 0ms 500ms,
+            opacity 150ms 100ms,
+            left 250ms cubic-bezier(0.54, -1.02, 1, 1),
+            z-index 0ms 210ms;
+}
+
+.tool-bar {
+    display: flex;
+    gap: 0.5em;
+    align-items: center;
+}
+
+.tool-bar > div.menu-item-top > .dropdown {
+    display: flex;
+    flex-direction: column;
+    visibility: hidden;
+    top: 100%;
+    min-width: 200px;
+    opacity: 0;
+    left: 0;
+    z-index: 2;
+
+    transition: visibility 0ms 500ms, opacity 250ms, top 250ms ease-out;
+}
+
+.tool-bar > div.menu-item-top.drop > .dropdown {
+    display: flex;
+    visibility: visible;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 200px;
+    opacity: 1;
+
+    transition: visibility 0ms, opacity 250ms, top 250ms ease-out;
+}
+
+.tool-bar > div.menu-item-top > span.content {
+    color: var(--text-0); /* todo add accents to text */
+    background-color: var(--accent-1);
+    padding: 4px 8px;
+    border-radius: var(--border-radius-smaller);
+
+    transition: background-color 250ms linear;
+}
+
+.tool-bar > div.menu-item-top:not(.drop) > * {
+    pointer-events: none;
+}
+
+.tool-bar > div.menu-item-top:hover {
+    cursor: pointer;
+}
+
+.tool-bar > div.menu-item-top:hover > span.content,
+.tool-bar > div.menu-item-top > span.content:hover,
+.tool-bar > div.menu-item-top.drop > span.content {
+    background-color: var(--accent-2);
+    cursor: pointer;
+
+    transition: background-color 0ms linear;
+}
+
+.tool-bar .menu-item-top .has-sub-menu:hover > .dropdown {
+    display: block;
+    visibility: visible;
+    z-index: 0;
+    opacity: 1;
+    left: calc(100% - 2px);
+
+    transition:
+            visibility 0ms,
+            opacity 200ms 70ms,
+            left 250ms cubic-bezier(0, 0, 0.36, 1.95),
+            z-index 0ms 210ms;
+}

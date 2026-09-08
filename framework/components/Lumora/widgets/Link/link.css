@@ -1,0 +1,27 @@
+.w-link.widget {
+    --color: var(--text-2);
+    /*--color-highlight: var(--text-0); !* TODO color accent *!*/
+    --color-highlight: var(--text-0);
+    --bg-color: var(--accent-1);
+
+    display: inline-block;
+    text-decoration: underline;
+    font-weight: bold;
+    color: var(--color);
+    cursor: default;
+    outline: 0 solid var(--bg-color);
+}
+
+.w-link.widget.not-edit:hover,
+.cursor-pointer .w-link.widget:hover {
+    cursor: pointer;
+    outline-width: 2px;
+    color: var(--color-highlight);
+    background-color: var(--bg-color);
+}
+
+.w-link.accent.widget {
+    --color: var(--text-1); /* TODO color accent */
+    /*--color-highlight: var(--text-color-0);*/
+    --bg-color: var(--container-2);
+}

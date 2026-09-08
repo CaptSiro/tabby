@@ -1,0 +1,333 @@
+@import "https://www.nerdfonts.com/assets/css/webfont.css";
+
+:root {
+    --container-0: #171717;
+    --container-1: #2e2e2e;
+    --container-2: #454545;
+    --container-3: #5d5d5d;
+    --container-4: #747474;
+    --text-0: #ffffff;
+    --text-1: #e8e8e8;
+    --text-2: #d1d1d1;
+
+    --accent-0: #9b3427;
+    --accent-1: #b34a32;
+    --accent-2: #c75c38;
+    --accent-3: #d17147;
+
+    --success: #0aa25e;
+    --error: #b21351;
+
+    --page-width: 1200px;
+    --border-radius: 8px;
+    --border-radius-smaller: 4px;
+    --gap: 16px;
+    --gap-smaller: 8px;
+    --animation-duration: 250ms;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --container-0: #ffffff;
+        --container-1: #f2f2f2;
+        --container-2: #e0e0e0;
+        --container-3: #cfcfcf;
+        --container-4: #bdbdbd;
+
+        --text-0: #1a1a1a;
+        --text-1: #333333;
+        --text-2: #4d4d4d;
+
+        --accent-0: #9b3427;
+        --accent-1: #b34a32;
+        --accent-2: #c75c38;
+        --accent-3: #d17147;
+
+        --success: #0aa25e;
+        --error: #b21351;
+    }
+
+    input {
+        color-scheme: light;
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+input {
+    color-scheme: dark;
+}
+
+
+
+h1 {
+    margin: 16px 0;
+}
+
+html {
+    background-color: var(--container-0);
+    color: var(--text-0);
+    font-family: Calibri, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+}
+
+i.nf > * {
+    display: none;
+}
+
+body.offline i.nf > * {
+    display: block;
+}
+
+i.nf {
+    font-style: normal;
+}
+
+
+
+a {
+    color: var(--text-0);
+}
+
+a.no-decoration {
+    text-decoration: none;
+}
+
+a:hover,
+a:visited:hover,
+a.no-decoration:visited:hover {
+    color: var(--accent-3);
+}
+
+a:visited {
+    color: var(--text-2);
+}
+
+a.no-decoration:visited {
+    color: var(--text-0);
+}
+
+[contenteditable=true]:focus {
+    outline: unset;
+}
+
+.link {
+    all: unset;
+    text-decoration: underline;
+    color: var(--text-0);
+}
+
+.link.no-decoration {
+    text-decoration: unset !important;
+}
+
+.link:hover {
+    all: unset;
+    cursor: pointer;
+    text-decoration: underline;
+    color: var(--accent-3);
+}
+
+.link.no-decoration:hover {
+    text-decoration: unset !important;
+}
+
+code {
+    background-color: black;
+    color: #0aa25e;
+    padding: 2px 4px;
+    border-radius: var(--border-radius-smaller);
+}
+
+.tag {
+    display: flex;
+    flex-direction: row;
+    padding: 0 0 0 1em;
+    border-radius: var(--border-radius);
+    color: var(--text-0) !important;
+    background-color: var(--container-0);
+    border: 2px solid var(--container-3);
+    text-decoration: none;
+    height: fit-content;
+}
+
+.tag span {
+    margin: auto;
+}
+
+.tag button,
+.tag .button {
+    border-radius: unset;
+    background-color: unset;
+    border: unset;
+    padding: 0.5em 1em;
+}
+
+.tag button:hover,
+.tag .button:hover {
+    color: var(--accent-3);
+    outline: unset;
+    background-color: unset;
+}
+
+
+
+button,
+.button {
+    padding: 0.5em 1em;
+    border-radius: var(--border-radius);
+    color: var(--text-0) !important;
+    background-color: var(--container-0);
+    border: 2px solid var(--container-3);
+    text-decoration: none;
+    height: fit-content;
+}
+
+button:disabled {
+    color: var(--text-2);
+    background-color: var(--container-1);
+}
+
+button:hover,
+.button:hover {
+    outline: 2px solid var(--accent-3);
+    background-color: var(--container-0);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+button:disabled:hover {
+    outline: unset;
+    background-color: var(--container-1);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+
+
+.page-section {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: var(--gap);
+}
+
+.page-container {
+    height: 100%;
+    min-height: 90vh;
+    overflow: auto;
+}
+
+
+
+.transition-background {
+    transition: background-color 500ms linear;
+}
+
+.validated {
+    background-color: var(--success) !important;
+}
+
+.rejected {
+    background-color: var(--error) !important;
+}
+
+.dragging {
+    caret-color: transparent !important;
+}
+
+.display-none {
+    display: none !important;
+}
+
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+}
+
+.column-smaller {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-smaller);
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    gap: var(--gap);
+    align-items: center;
+}
+
+.pad-gap {
+    padding: var(--gap);
+}
+
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-0);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-2);
+}
+
+
+.hide {
+    display: none !important;
+}
+
+.opacity-0 {
+    opacity: 0 !important;
+}
+
+
+.terminal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 60vh;
+    width: 100%;
+    background-color: black;
+    color: #aae568;
+    overflow: auto;
+}
+
+
+.dropdown.animate {
+    transition: max-height ease-in-out var(--animation-duration);
+}
+
+.progress-bar-container {
+    height: 1rem;
+    width: 100%;
+    background-color: var(--container-1);
+    border-radius: var(--border-radius-smaller);
+}
+
+.progress-bar-container .progress-bar-fill {
+    --fill: 0%;
+    width: var(--fill);
+    height: 100%;
+    background-color: var(--accent-3);
+}

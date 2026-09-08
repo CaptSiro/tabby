@@ -1,0 +1,175 @@
+<?php
+
+namespace components\pages\AiGeneratedPage;
+
+use components\fs\FileContent\FileContent;
+use core\App;
+use core\communication\body\DictionaryBody;
+use core\communication\Request;
+use core\communication\Response;
+use core\storage\DataItem;
+use core\http\HttpCode;
+use core\http\HttpMethod;
+use core\locale\LexiconUnit;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Component;
+use core\view\Controller;
+use core\view\Html;
+use core\view\str;
+use core\view\ViewTemplateRenderer;
+use models\Page\Page;
+use models\User\User;
+
+class AiGeneratedPage extends Controller {
+    use ViewTemplateRenderer, LexiconUnit;
+
+
+
+    const LEXICON_GROUP = 'ai-page';
+
+    public const TARGET_HTML = 'ai-page-source_html';
+    public const TARGET_CSS = 'ai-page-source_css';
+    public const TARGET_JS = 'ai-page-source_js';
+
+    public static function build(Page $page): Component {
+        $html = $page->get(AiPageTemplate::DATA_ITEM_HTML);
+        $css = $page->get(AiPageTemplate::DATA_ITEM_CSS);
+        $js = $page->get(AiPageTemplate::DATA_ITEM_JS);
+
+        $request = App::getInstance()
+            ->getRequest();
+        if (is_null($user = User::fromRequest($request)) || !$user->isAdmin()) {
+            return static::renderHtml($html, $css, $js);
+        }
+
+        return new static($html, $css, $js);
+    }
+
+    protected static function renderHtml(DataItem $html, DataItem $css, DataItem $js): Component {
+        if (!$html->exists()) {
+            return str::view('');
+        }
+
+        if ($css->exists()) {
+            Css::import($css->getFilePath());
+        }
+
+        if ($js->exists()) {
+            Javascript::import($js->getFilePath());
+        }
+
+        return str::view($html->read());
+    }
+
+
+
+    protected array $sources;
+    protected bool $sourcesCreated = false;
+
+    public function __construct(
+        protected DataItem $html,
+        protected DataItem $css,
+        protected DataItem $js,
+    ) {
+        parent::__construct();
+
+        $this->setLexiconGroup(self::LEXICON_GROUP);
+        $this->sources = $this->createSources();
+    }
+
+
+
+    public function render(): string {
+        if (!$this->html->exists()) {
+            return '';
+        }
+
+        return $this->renderTemplated();
+    }
+
+    protected function createFileContent(DataItem $source, string $targetSelector): FileContent {
+        $fileContent = new FileContent(
+            $source->getFilePath(),
+            readonly: false
+        );
+
+        $fileContent->addJavascriptInit('aiPage_source');
+        $fileContent->addDataAttribute('target', $targetSelector);
+
+        return $fileContent;
+    }
+
+    protected function createSources(): array {
+        if ($this->sourcesCreated) {
+            return $this->sources;
+        }
+
+        $this->sourcesCreated = true;
+
+        $this->sources = [
+            'index.html' => $this->createFileContent($this->html, '#'. self::TARGET_HTML)
+        ];
+
+        if ($this->css->exists()) {
+            $this->sources['styles.css'] = $this->createFileContent($this->css, '#'. self::TARGET_CSS);
+            $this->addPropertyHtmlElements([Html::wrapUnsafe(
+                'style',
+                $this->css->read(),
+                ['id' => self::TARGET_CSS]
+            )]);
+        }
+
+        if ($this->js->exists()) {
+            $this->sources['script.js'] = $this->createFileContent($this->js, '#'. self::TARGET_JS);
+            $this->addPropertyHtmlElements([Html::wrapUnsafe(
+                'script',
+                $this->js->read(),
+                [
+                    'defer' => '',
+                    'id' => self::TARGET_JS
+                ]
+            )]);
+        }
+
+        return $this->sources;
+    }
+
+    public function performControllerAction(Request $request, Response $response): void {
+        switch ($request->getHttpMethod()) {
+            case HttpMethod::GET: {
+                parent::performControllerAction($request, $response);
+                return;
+            }
+
+            case HttpMethod::PUT: {
+                $user = User::fromRequest($request);
+                if (is_null($user) || !$user->isAdmin()) {
+                    $response->sendStatus(HttpCode::CE_FORBIDDEN);
+                }
+
+                $fields = $request
+                    ->body(DictionaryBody::class)
+                    ->getFields();
+
+                if (!is_null($html = $fields->get('html')) && $this->html->exists()) {
+                    $this->html->write($html);
+                }
+
+                if (!is_null($css = $fields->get('css')) && $this->css->exists()) {
+                    $this->css->write($css);
+                }
+
+                if (!is_null($js = $fields->get('js')) && $this->js->exists()) {
+                    $this->js->write($js);
+                }
+
+                $response->sendStatus(HttpCode::S_OK);
+            }
+
+            default: {
+                $response->sendStatus(HttpCode::CE_METHOD_NOT_ALLOWED);
+            }
+        }
+    }
+}

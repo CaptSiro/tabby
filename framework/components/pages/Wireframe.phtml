@@ -1,0 +1,46 @@
+<?php /** @var Wireframe $this */
+
+use components\pages\Wireframe;
+use core\view\Html;
+use example\components\Footer;
+use example\components\Header;
+
+$head = $this->getHead();
+
+?><!DOCTYPE html>
+<html lang="<?= $head->getLanguage() ?>">
+<?= $this->head ?>
+<body>
+    <?php if ($this->payload->getPropertyBoolean($this::PAYLOAD_DO_ADD_HEADER, true)): ?>
+        <?= Header::default() ?>
+    <?php endif; ?>
+
+    <?php if (!$this->page->isReleased()): ?>
+        <div class="release-notice center" style="background-color: var(--error)">
+            <strong class="pad-gap">
+                <?= Html::escape($this->tr('This is page is not released')) ?>
+            </strong>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($this->payload->getPropertyBoolean($this::PAYLOAD_DO_ADD_BREAD_CRUMBS, true)): ?>
+        <div class="wireframe page-section bc-no-margin">
+            <?= $this->getBreadCrumbs() ?>
+        </div>
+    <?php endif; ?>
+
+    <main class="wireframe page-container">
+        <?php if ($this->hasContentAccess()): ?>
+            <?= $this->view ?>
+        <?php else: ?>
+            <div class="center">
+                <h1><?= Html::escape($this->tr('Page is not accessible')) ?></h1>
+            </div>
+        <?php endif; ?>
+    </main>
+
+    <?php if ($this->payload->getPropertyBoolean($this::PAYLOAD_DO_ADD_FOOTER, true)): ?>
+        <?= Footer::default() ?>
+    <?php endif; ?>
+</body>
+</html>

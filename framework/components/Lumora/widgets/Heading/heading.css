@@ -1,0 +1,10 @@
+.w-heading {
+    padding: 32px 16px;
+    color: var(--text-0); /* TODO color accent */
+    background-color: var(--accent-3);
+}
+
+.w-heading *::selection {
+    color: var(--accent-3);
+    background-color: var(--text-0); /* TODO color accent */
+}

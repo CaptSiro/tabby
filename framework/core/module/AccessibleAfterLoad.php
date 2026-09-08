@@ -1,0 +1,36 @@
+<?php
+
+namespace core\module;
+
+use core\App;
+use core\Flags;
+use core\http\HttpCode;
+
+trait AccessibleAfterLoad {
+    use Flags;
+
+    public const FLAG_LOADED = 1;
+
+
+
+    protected function markLoaded(): void {
+        $this->setFlag(self::FLAG_LOADED);
+    }
+
+    public function isLoaded(): bool {
+        return $this->hasFlag(self::FLAG_LOADED);
+    }
+
+    protected function accessibleAfterLoad(): void {
+        if ($this->hasFlag(self::FLAG_LOADED)) {
+            return;
+        }
+
+        App::getInstance()
+            ->getResponse()
+            ->sendMessage(
+                "Module SideLoader is not accessible before module is properly loaded",
+                HttpCode::SE_INTERNAL_SERVER_ERROR
+            );
+    }
+}
