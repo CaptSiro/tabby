@@ -171,6 +171,10 @@ main {
 
         & .widget {
             position: absolute;
+            /* with both insets set (center anchor) the widget is centered between them */
+            margin: auto;
+            width: fit-content;
+            height: fit-content;
             outline: 2px solid transparent;
 
             transition: outline-color 200ms linear;

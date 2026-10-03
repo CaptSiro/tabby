@@ -4,7 +4,7 @@ const BOOKMARKS_KEY = 'tabby_bookmarks';
 
 
 
-class BookmarksWidget extends StartuhWidget {
+class BookmarksWidget extends TabbyWidget {
     /** @type {BookmarksWidgetConfig} */
     #config;
     /** @type {HTMLElement} */
@@ -232,7 +232,11 @@ class BookmarksWidget extends StartuhWidget {
                         }
                     }, "Delete"),
                 ])
-            ])
+            ]),
+            
+            // HRInspector(),
+            //
+            // ...this.createBaseWidgetSettings()
         ];
     }
 
@@ -250,7 +254,7 @@ class BookmarksWidget extends StartuhWidget {
 
 
 
-const bookmarks_builder = new FunctionalStartuhBuilder(
+const bookmarks_builder = new FunctionalTabbyBuilder(
     BOOKMARKS_BUILDER,
     config => new BookmarksWidget(config)
 );

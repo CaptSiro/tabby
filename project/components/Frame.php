@@ -12,6 +12,7 @@ use core\sideloader\importers\Css\Css;
 use core\sideloader\importers\Javascript\Javascript;
 use core\url\Url;
 use core\view\Component;
+use project\Tabby;
 
 class Frame extends Component {
     use LexiconUnit;
@@ -26,21 +27,32 @@ class Frame extends Component {
 
 
 
-    public function __construct() {
+    protected bool $includeLinks = true;
+    
+    public function __construct(
+        protected bool $includeProjectLink = true,
+        protected bool $includeAdminLink = true
+    ) {
         parent::__construct();
+        
+        $this->includeLinks = $this->includeProjectLink || $this->includeAdminLink;
 
         $this->setLexiconGroup(self::LEXICON_GROUP);
+
         $this->setTitle($this->tr("Frame"));
+        $this->addPropertyHtmlElements([
+            Tabby::createApi()
+        ]);
     }
 
 
 
     public function loadWidgets(string $widgetsDirectory): void {
-        foreach (glob(Path::join($widgetsDirectory, '*.js')) as $widget) {
+        foreach (glob(Path::join($widgetsDirectory, '**/*.js')) as $widget) {
             Javascript::import($widget);
         }
 
-        foreach (glob(Path::join($widgetsDirectory, '*.css')) as $widget) {
+        foreach (glob(Path::join($widgetsDirectory, '**/*.css')) as $widget) {
             Css::import($widget);
         }
     }

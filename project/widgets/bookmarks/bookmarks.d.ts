@@ -1,4 +1,4 @@
-import { StartuhWidgetConfig } from "../tabby";
+import { TabbyWidgetConfig } from "../../tabby";
 
 
 
@@ -11,4 +11,4 @@ declare type Bookmark = {
 
 declare type BookmarksWidgetConfig = {
     items: Bookmark[],
-} & StartuhWidgetConfig;
+} & TabbyWidgetConfig;

@@ -19,6 +19,7 @@
         "index.php": "<framework>/bin/index.php"
     },
     "mount": {
+        "root": "./",
         "assets": "./public",
         "framework": "./framework",
         "storage": "./data",

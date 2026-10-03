@@ -62,7 +62,7 @@ function time_parseTime(date) {
 
 
 
-class TimeWidget extends StartuhWidget {
+class TimeWidget extends TabbyWidget {
     /** @type {TimeWidgetConfig} */
     #config;
     /** @type {HTMLElement} */
@@ -157,6 +157,10 @@ class TimeWidget extends StartuhWidget {
                 tabby_save();
                 return true;
             }, "Show as military time"),
+            
+            // HRInspector(),
+            //
+            // ...this.createBaseWidgetSettings()
         ];
     }
 
@@ -174,7 +178,7 @@ class TimeWidget extends StartuhWidget {
 
 
 
-const time_builder = new FunctionalStartuhBuilder(
+const time_builder = new FunctionalTabbyBuilder(
     TIME_BUILDER,
     config => new TimeWidget(config)
 );

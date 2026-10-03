@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Startuh",
+    "name": "Tabby",
     "version": "0.2.1",
     "host_permissions": [
         "http://localhost/*"

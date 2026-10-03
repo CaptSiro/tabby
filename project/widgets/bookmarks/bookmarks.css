@@ -3,14 +3,29 @@
     flex-direction: column;
     gap: var(--gap-smaller);
 
+    & .bookmarks-listing {
+        height: 40vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background-color: var(--container-1);
+    }
+
     & .bookmark {
         padding: 4px;
         min-height: 1rem;
+
+        &:nth-child(even) {
+            background-color: var(--container-2);
+        }
 
         &.selected {
             background-color: var(--accent-0);
         }
     }
+}
+
+.edit .w-bookmarks a {
+    pointer-events: none;
 }
 
 .w-bookmarks {

@@ -8,9 +8,9 @@ const tabby_editMode = new Impulse({ default: false });
 const tabby_content = $(".layers > .content");
 const tabby_inspector = $(".inspector-container > .inspector");
 const tabby_widgets_element = $(".widgets > .container");
-/** @type {Map<HTMLElement, StartuhWidget>} */
+/** @type {Map<HTMLElement, TabbyWidget>} */
 const tabby_widgets = new Map();
-/** @type {Map<string, StartuhBuilder>} */
+/** @type {Map<string, TabbyBuilder>} */
 const tabby_builders = new Map();
 const tabby_main = $('main');
 const tabby_layout = JSON.parse(localStorage.getItem(TABBY_KEY_LAYOUT) ?? "[300, 300]");
@@ -32,7 +32,7 @@ function tabby_load() {
     const widgets = JSON.parse(localStorage.getItem(TABBY_KEY_WIDGETS) ?? "[]");
 
     for (let i = 0; i < widgets.length; i++) {
-        /** @type {StartuhWidgetConfig} */
+        /** @type {TabbyWidgetConfig} */
         const widget = widgets[i];
 
         const builder = tabby_builders.get(widget.builder);
@@ -77,7 +77,7 @@ async function tabby_chooseRandomBackground() {
         return;
     }
 
-    const api = api_loadStartuh();
+    const api = api_loadTabby();
     if (!is(api)) {
         return;
     }
@@ -97,7 +97,7 @@ async function tabby_chooseRandomBackground() {
 
 function tabby_defaultInspect() {
     return [
-        TitleInspector('Startuh'),
+        TitleInspector('Tabby'),
 
         HRInspector(),
 
@@ -127,7 +127,7 @@ function tabby_editToggle() {
 }
 
 /**
- * @param {StartuhBuilder} builder
+ * @param {TabbyBuilder} builder
  */
 function tabby_addBuilder(builder) {
     tabby_builders.set(builder.name, builder);
@@ -228,10 +228,10 @@ function tabby_updateLayout() {
 
 /**
  * @template T
- * @implements {StartuhBuilder<T, StartuhWidgetConfig>}
+ * @implements {TabbyBuilder<T, TabbyWidgetConfig>}
  */
-class FunctionalStartuhBuilder {
-    /** @type {(config?: StartuhWidgetConfig) => T} */
+class FunctionalTabbyBuilder {
+    /** @type {(config?: TabbyWidgetConfig) => T} */
     #builder;
 
     /** @type {string} */
@@ -241,7 +241,7 @@ class FunctionalStartuhBuilder {
 
     /**
      * @param {string} name
-     * @param {(config?: StartuhWidgetConfig) => StartuhWidget} builder
+     * @param {(config?: TabbyWidgetConfig) => TabbyWidget} builder
      */
     constructor(name, builder) {
         this.#name = name;
@@ -257,8 +257,10 @@ class FunctionalStartuhBuilder {
     create() {
         return this.#builder({
             builder: this.#name,
-            x: 0.5,
-            y: 0.5
+            x: 0,
+            y: 0,
+            anchorX: "center",
+            anchorY: "center"
         });
     }
 
@@ -267,23 +269,72 @@ class FunctionalStartuhBuilder {
     }
 }
 
-class StartuhWidget {
+class TabbyWidget {
     /** @type {Vec2} */
-    position = new Vec2(0.5, 0.5);
+    position = new Vec2(0, 0);
+
+    /** @type {TabbyAnchor} */
+    anchorX = "center";
+
+    /** @type {TabbyAnchor} */
+    anchorY = "center";
 
 
 
     setConfig(config) {
         this.position = new Vec2(config.x, config.y);
+        // configs saved before anchors existed are relative to the top left corner
+        this.anchorX = config.anchorX ?? "start";
+        this.anchorY = config.anchorY ?? "start";
     }
 
-    setPosition(x, y) {
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {TabbyAnchor} anchorX
+     * @param {TabbyAnchor} anchorY
+     */
+    setPosition(x, y, anchorX, anchorY) {
         this.position = new Vec2(x, y);
+        this.anchorX = anchorX;
+        this.anchorY = anchorY;
         tabby_save();
     }
 
     instantiate() {
         return tabby_WidgetElement(this, "Widget");
+    }
+    
+    createBaseWidgetSettings() {
+        return [
+            NumberInspector(this.position.x, value => {
+                this.setPosition(value, this.position.y, this.anchorX, this.anchorY);
+                return true;
+            }, "Position X", _, '%'),
+            
+            NumberInspector(this.position.y, value => {
+                this.setPosition(this.position.x, value, this.anchorX, this.anchorY);
+                return true;
+            }, "Position Y", _, '%'),
+            
+            SelectInspector(value => {
+                this.setPosition(this.position.x, this.position.y, value, this.anchorY);
+                return true;
+            }, selectOption([
+                { value: "start", text: "Start" },
+                { value: "center", text: "Center" },
+                { value: "end", text: "End" },
+            ], this.anchorX), "Anchor X"),
+            
+            SelectInspector(value => {
+                this.setPosition(this.position.x, this.position.y, this.anchorX, value);
+                return true;
+            }, selectOption([
+                { value: "start", text: "Start" },
+                { value: "center", text: "Center" },
+                { value: "end", text: "End" },
+            ], this.anchorY), "Anchor Y"),
+        ];
     }
 
     /**
@@ -294,13 +345,15 @@ class StartuhWidget {
     }
 
     /**
-     * @returns {StartuhWidgetConfig}
+     * @returns {TabbyWidgetConfig}
      */
     save() {
         return {
             builder: "",
             x: this.position.x,
             y: this.position.y,
+            anchorX: this.anchorX,
+            anchorY: this.anchorY,
         }
     }
 }
@@ -308,28 +361,88 @@ class StartuhWidget {
 
 
 /**
- * @param {StartuhWidget} context
+ * Picks the anchor whose point on the widget (start edge, center, end edge) is closest to the same point on the
+ * container and computes the offset from it as a fraction of the container size.
+ *
+ * @param {number} start widget start edge relative to the container
+ * @param {number} size widget size
+ * @param {number} containerSize
+ * @returns {{ anchor: TabbyAnchor, offset: number }}
+ */
+function tabby_closestAnchor(start, size, containerSize) {
+    const candidates = [
+        { anchor: "start", distance: start },
+        { anchor: "center", distance: start + size / 2 - containerSize / 2 },
+        { anchor: "end", distance: containerSize - (start + size) },
+    ];
+
+    let closest = candidates[0];
+    for (const candidate of candidates) {
+        if (Math.abs(candidate.distance) < Math.abs(closest.distance)) {
+            closest = candidate;
+        }
+    }
+
+    return {
+        anchor: closest.anchor,
+        offset: closest.distance / containerSize
+    };
+}
+
+/**
+ * Positions the widget along one axis purely with CSS, so the browser keeps it in place when the container or the
+ * widget itself is resized. Widgets have `margin: auto` and `fit-content` size, so when both insets are set
+ * the widget is centered between them.
+ *
+ * @param {HTMLElement} element
+ * @param {TabbyAnchor} anchor
+ * @param {number} offset fraction of the container size
+ * @param {"left" | "top"} startProperty
+ * @param {"right" | "bottom"} endProperty
+ */
+function tabby_placeAxis(element, anchor, offset, startProperty, endProperty) {
+    const percentage = value => (value * 100) + "%";
+
+    switch (anchor) {
+        case "end":
+            element.style[startProperty] = "auto";
+            element.style[endProperty] = percentage(offset);
+            break;
+
+        case "center":
+            // shrinking the centering region from one side by twice the offset moves its middle by the offset
+            element.style[startProperty] = percentage(Math.max(0, 2 * offset));
+            element.style[endProperty] = percentage(Math.max(0, -2 * offset));
+            break;
+
+        default:
+            element.style[startProperty] = percentage(offset);
+            element.style[endProperty] = "auto";
+            break;
+    }
+}
+
+/**
+ * @param {TabbyWidget} context
  * @param {Content} content
  * @param {number | undefined} x
  * @param {number | undefined} y
+ * @param {TabbyAnchor | undefined} anchorX
+ * @param {TabbyAnchor | undefined} anchorY
  */
-function tabby_WidgetElement(context, content, { x, y } = {}) {
-    const percentage = (a, b) => ((a / b) * 100) + "%";
-    const coords = c => is(c) ? (c * 100) + "%" : "50%";
-
+function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY } = {}) {
     let moving = false;
     let mouseOffset = std_vec2(0, 0);
 
-    let positionX = x ?? 0.5;
-    let positionY = y ?? 0.5;
+    let horizontal = is(x)
+        ? { anchor: anchorX ?? "start", offset: x }
+        : { anchor: "center", offset: 0 };
+    let vertical = is(y)
+        ? { anchor: anchorY ?? "start", offset: y }
+        : { anchor: "center", offset: 0 };
 
     const widget = jsml.div({
         class: "widget glass",
-
-        style: {
-            left: coords(x),
-            top: coords(y)
-        },
 
         /** @param {PointerEvent} event */
         onPointerDown: event => {
@@ -359,26 +472,33 @@ function tabby_WidgetElement(context, content, { x, y } = {}) {
             const widgetX = std_clamp(0, container.width - that.width, x - container.x);
             const widgetY = std_clamp(0, container.height - that.height, y - container.y);
 
-            positionX = widgetX / container.width;
-            positionY = widgetY / container.height;
+            horizontal = tabby_closestAnchor(widgetX, that.width, container.width);
+            vertical = tabby_closestAnchor(widgetY, that.height, container.height);
 
-            widget.style.left = percentage(widgetX, container.width);
-            widget.style.top = percentage(widgetY, container.height);
+            tabby_placeAxis(widget, horizontal.anchor, horizontal.offset, "left", "right");
+            tabby_placeAxis(widget, vertical.anchor, vertical.offset, "top", "bottom");
         },
 
         /** @param {PointerEvent} event */
         onPointerUp: event => {
-            context.setPosition(positionX, positionY);
+            if (!moving) {
+                return;
+            }
+
+            context.setPosition(horizontal.offset, vertical.offset, horizontal.anchor, vertical.anchor);
             widget.releasePointerCapture(event.pointerId);
             moving = false;
         }
     }, content);
 
+    tabby_placeAxis(widget, horizontal.anchor, horizontal.offset, "left", "right");
+    tabby_placeAxis(widget, vertical.anchor, vertical.offset, "top", "bottom");
+
     return widget;
 }
 
 /**
- * @param {StartuhBuilder<StartuhWidget, any>} builder
+ * @param {TabbyBuilder<TabbyWidget, any>} builder
  * @param {HTMLElement} icon
  * @param {string} name
  */
