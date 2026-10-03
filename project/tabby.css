@@ -22,6 +22,14 @@ main {
     background-clip: padding-box;
 }
 
+.inspector > *:last-child {
+    margin-bottom: 10vh !important;
+}
+
+.i-number input + * {
+    min-width: unset !important;
+}
+
 
 
 main {

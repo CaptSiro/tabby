@@ -176,8 +176,9 @@ $router->use('/finance/categories', function (Request $request, Response $respon
             $name = $fields->get('name');
             $icon = $fields->get('icon');
             $color = $fields->get('color');
+            $type = $fields->get('type');
 
-            // 2. Validate name, icon and color, 400 with message.
+            // 2. Validate name, icon, color and type, 400 with message.
             if (!Finance::isText($name, Finance::NAME_MAX_LENGTH)) {
                 $response->sendMessage(
                     Lexicon::format($lexicon->tr('Name must be a non-empty text of at most {} characters'), (string) Finance::NAME_MAX_LENGTH),
@@ -187,7 +188,7 @@ $router->use('/finance/categories', function (Request $request, Response $respon
 
             if (!Finance::isText($icon, Finance::ICON_MAX_LENGTH) || preg_match(Finance::PATTERN_ICON, trim($icon)) !== 1) {
                 $response->sendMessage(
-                    $lexicon->tr('Icon must be a nerd font class, e.g. nf-fa-house'),
+                    $lexicon->tr('Icon must be a nerd font class, e.g. nf-fa-house, or a single letter'),
                     HttpCode::CE_BAD_REQUEST
                 );
             }
@@ -195,6 +196,13 @@ $router->use('/finance/categories', function (Request $request, Response $respon
             if (!is_string($color) || preg_match(Finance::PATTERN_COLOR, $color) !== 1) {
                 $response->sendMessage(
                     $lexicon->tr('Color must be in #rrggbb or #rrggbbaa format'),
+                    HttpCode::CE_BAD_REQUEST
+                );
+            }
+
+            if (!in_array($type, FinanceCategory::TYPES, true)) {
+                $response->sendMessage(
+                    Lexicon::format($lexicon->tr('Type must be one of: {}'), implode(', ', FinanceCategory::TYPES)),
                     HttpCode::CE_BAD_REQUEST
                 );
             }
@@ -216,10 +224,11 @@ $router->use('/finance/categories', function (Request $request, Response $respon
                 }
             }
 
-            // 4. Set name, icon, color, save and respond with the category.
+            // 4. Set name, icon, color, type, save and respond with the category.
             $category->name = trim($name);
             $category->icon = trim($icon);
             $category->color = $color;
+            $category->type = $type;
             $category->updatedAt = $now;
             $category->save();
 
@@ -257,82 +266,109 @@ $router->use('/finance/categories', function (Request $request, Response $respon
 // POST, JSON body FinanceTransactionDraft { categoryId, date, amount, currency, baseCurrency, note }
 $router->use('/finance/transactions', function (Request $request, Response $response) {
     $lexicon = Lexicon::group(Tabby::LEXICON_GROUP);
-
-    if ($request->getHttpMethod() !== HttpMethod::POST) {
-        $response->sendMessage($lexicon->tr('Invalid HTTP method'), HttpCode::CE_METHOD_NOT_ALLOWED);
+    
+    switch ($request->getHttpMethod()) {
+        case HttpMethod::POST:
+        case HttpMethod::PUT: {
+            // 1. Decode JSON body, 400 when it is not a JSON object.
+            $fields = Finance::body($request, $response);
+            $categoryId = $fields->get('categoryId');
+            $date = $fields->get('date');
+            $amount = $fields->get('amount');
+            $currency = $fields->get('currency');
+            $baseCurrency = $fields->get('baseCurrency');
+            $note = $fields->get('note', '');
+            
+            // 2. Validate, 400 with message.
+            $category = is_int($categoryId)
+                ? FinanceCategory::fromId($categoryId)
+                : null;
+            
+            if (is_null($category) || $category->isDeleted()) {
+                $response->sendMessage($lexicon->tr('Category not found'), HttpCode::CE_BAD_REQUEST);
+            }
+            
+            if (!Finance::isDate($date)) {
+                $response->sendMessage($lexicon->tr('Date must be a valid date in YYYY-MM-DD format'), HttpCode::CE_BAD_REQUEST);
+            }
+            
+            if (!is_int($amount) && !is_float($amount)) {
+                $response->sendMessage($lexicon->tr('Amount must be a number'), HttpCode::CE_BAD_REQUEST);
+            }
+            
+            // stored as DECIMAL(14, 2)
+            $amount = round($amount, 2);
+            if ($amount <= 0 || $amount > Finance::AMOUNT_MAX) {
+                $response->sendMessage(
+                    Lexicon::format($lexicon->tr('Amount must be greater than 0 and at most {}'), (string) Finance::AMOUNT_MAX),
+                    HttpCode::CE_BAD_REQUEST
+                );
+            }
+            
+            if (!Finance::isCurrency($currency) || !Finance::isCurrency($baseCurrency)) {
+                $response->sendMessage($lexicon->tr('Currency must be a 3 letter code, e.g. CZK'), HttpCode::CE_BAD_REQUEST);
+            }
+            
+            if (!Finance::isText($note, Finance::NOTE_MAX_LENGTH, allowEmpty: true)) {
+                $response->sendMessage(
+                    Lexicon::format($lexicon->tr('Note must be a text of at most {} characters'), (string) Finance::NOTE_MAX_LENGTH),
+                    HttpCode::CE_BAD_REQUEST
+                );
+            }
+            
+            // 3. Remember the conversion rate at the time of setting, 502 when it cannot be fetched.
+            $rate = Finance::rate($currency, $baseCurrency);
+            if (is_null($rate)) {
+                $response->sendMessage(
+                    Lexicon::format($lexicon->tr('Exchange rate {} could not be fetched'), "$currency -> $baseCurrency"),
+                    HttpCode::SE_BAD_GATEWAY
+                );
+            }
+            
+            // 4. Create the transaction, save and respond with it.
+            $now = Sql::datetimeNow();
+        
+            if ($request->getHttpMethod() === HttpMethod::POST) {
+                $transaction = new FinanceTransaction();
+                $transaction->createdAt = $now;
+            } else {
+                $id = $fields->get('id');
+                $transaction = is_int($id)
+                    ? FinanceTransaction::fromId($id)
+                    : null;
+                
+                if (is_null($transaction)) {
+                    $response->sendMessage($lexicon->tr('Transaction not found'), HttpCode::CE_NOT_FOUND);
+                }
+            }
+            
+            $transaction->categoryId = $category->id;
+            $transaction->date = $date;
+            $transaction->amount = $amount;
+            $transaction->currency = $currency;
+            $transaction->baseCurrency = $baseCurrency;
+            $transaction->rate = $rate;
+            $transaction->note = trim($note);
+            $transaction->updatedAt = $now;
+            $transaction->save();
+            
+            $response->json($transaction);
+            break;
+        }
+        
+        case HttpMethod::DELETE: {
+            $fields = Finance::body($request, $response);
+            $transaction = FinanceTransaction::fromId($fields->getStrict('id'));
+            $transaction->delete();
+            $response->sendStatus(200);
+            break;
+        }
+        
+        default: {
+            $response->sendMessage($lexicon->tr('Invalid HTTP method'), HttpCode::CE_METHOD_NOT_ALLOWED);
+            break;
+        }
     }
-
-    // 1. Decode JSON body, 400 when it is not a JSON object.
-    $fields = Finance::body($request, $response);
-    $categoryId = $fields->get('categoryId');
-    $date = $fields->get('date');
-    $amount = $fields->get('amount');
-    $currency = $fields->get('currency');
-    $baseCurrency = $fields->get('baseCurrency');
-    $note = $fields->get('note', '');
-
-    // 2. Validate, 400 with message.
-    $category = is_int($categoryId)
-        ? FinanceCategory::fromId($categoryId)
-        : null;
-
-    if (is_null($category) || $category->isDeleted()) {
-        $response->sendMessage($lexicon->tr('Category not found'), HttpCode::CE_BAD_REQUEST);
-    }
-
-    if (!Finance::isDate($date)) {
-        $response->sendMessage($lexicon->tr('Date must be a valid date in YYYY-MM-DD format'), HttpCode::CE_BAD_REQUEST);
-    }
-
-    if (!is_int($amount) && !is_float($amount)) {
-        $response->sendMessage($lexicon->tr('Amount must be a number'), HttpCode::CE_BAD_REQUEST);
-    }
-
-    // stored as DECIMAL(14, 2)
-    $amount = round($amount, 2);
-    if ($amount <= 0 || $amount > Finance::AMOUNT_MAX) {
-        $response->sendMessage(
-            Lexicon::format($lexicon->tr('Amount must be greater than 0 and at most {}'), (string) Finance::AMOUNT_MAX),
-            HttpCode::CE_BAD_REQUEST
-        );
-    }
-
-    if (!Finance::isCurrency($currency) || !Finance::isCurrency($baseCurrency)) {
-        $response->sendMessage($lexicon->tr('Currency must be a 3 letter code, e.g. CZK'), HttpCode::CE_BAD_REQUEST);
-    }
-
-    if (!Finance::isText($note, Finance::NOTE_MAX_LENGTH, allowEmpty: true)) {
-        $response->sendMessage(
-            Lexicon::format($lexicon->tr('Note must be a text of at most {} characters'), (string) Finance::NOTE_MAX_LENGTH),
-            HttpCode::CE_BAD_REQUEST
-        );
-    }
-
-    // 3. Remember the conversion rate at the time of setting, 502 when it cannot be fetched.
-    $rate = Finance::rate($currency, $baseCurrency);
-    if (is_null($rate)) {
-        $response->sendMessage(
-            Lexicon::format($lexicon->tr('Exchange rate {} could not be fetched'), "$currency -> $baseCurrency"),
-            HttpCode::SE_BAD_GATEWAY
-        );
-    }
-
-    // 4. Create the transaction, save and respond with it.
-    $now = Sql::datetimeNow();
-
-    $transaction = new FinanceTransaction();
-    $transaction->categoryId = $category->id;
-    $transaction->date = $date;
-    $transaction->amount = $amount;
-    $transaction->currency = $currency;
-    $transaction->baseCurrency = $baseCurrency;
-    $transaction->rate = $rate;
-    $transaction->note = trim($note);
-    $transaction->createdAt = $now;
-    $transaction->updatedAt = $now;
-    $transaction->save();
-
-    $response->json($transaction);
 });
 
 // GET ?month=YYYY-MM&currency=XXX&recent=N
@@ -401,23 +437,7 @@ $router->use('/finance/summary', function (Request $request, Response $response)
             + $transaction->getBaseAmount() * $rates[$transaction->baseCurrency];
     }
 
-    // 5. Round the totals, order them by value and sum them up.
-    arsort($sums);
-
-    $total = 0;
-    $totals = [];
-
-    foreach ($sums as $categoryId => $sum) {
-        $sum = round($sum, 2);
-        $total += $sum;
-
-        $totals[] = [
-            'categoryId' => $categoryId,
-            'total' => $sum,
-        ];
-    }
-
-    // 6. Load the newest transactions overall, not only of the month.
+    // 5. Load the newest transactions overall, not only of the month.
     $recentTransactions = [];
 
     if ($recent > 0) {
@@ -430,7 +450,7 @@ $router->use('/finance/summary', function (Request $request, Response $response)
         );
     }
 
-    // 7. Load categories that are not deleted, plus deleted ones referenced by the totals or recent transactions.
+    // 6. Load categories that are not deleted, plus deleted ones referenced by the totals or recent transactions.
     $categories = Finance::activeCategories();
 
     $missing = array_values(array_diff(
@@ -451,11 +471,39 @@ $router->use('/finance/summary', function (Request $request, Response $response)
         ];
     }
 
+    // 7. Round the totals, order them by value and sum them up per category type.
+    $types = [];
+    foreach ($categories as $category) {
+        $types[$category->id] = $category->type;
+    }
+
+    arsort($sums);
+
+    $expenses = 0;
+    $income = 0;
+    $totals = [];
+
+    foreach ($sums as $categoryId => $sum) {
+        $sum = round($sum, 2);
+
+        if ($types[$categoryId] === FinanceCategory::TYPE_INCOME) {
+            $income += $sum;
+        } else {
+            $expenses += $sum;
+        }
+
+        $totals[] = [
+            'categoryId' => $categoryId,
+            'total' => $sum,
+        ];
+    }
+
     // 8. Respond with FinanceSummary.
     $response->json([
         'month' => $month,
         'currency' => $currency,
-        'total' => round($total, 2),
+        'expenses' => round($expenses, 2),
+        'income' => round($income, 2),
         'totals' => $totals,
         'categories' => $categories,
         'recent' => $recentTransactions,

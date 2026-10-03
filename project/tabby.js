@@ -8,6 +8,8 @@ function api_loadTabby() {
 
 
 const TABBY_ANIMATION_DURATION = 500;
+/** Pixels the pointer has to travel before a widget starts to be dragged in edit mode */
+const TABBY_DRAG_THRESHOLD = 4;
 const TABBY_KEY_LAYOUT = "tabby_layout";
 const TABBY_KEY_EDIT_MODE = "tabby_edit-mode";
 const TABBY_KEY_WIDGETS = "tabby_widgets";
@@ -440,7 +442,10 @@ function tabby_placeAxis(element, anchor, offset, startProperty, endProperty) {
  * @param {TabbyAnchor | undefined} anchorY
  */
 function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY } = {}) {
+    // pointer is down, but the widget is not dragged until it moves past TABBY_DRAG_THRESHOLD
+    let pressed = false;
     let moving = false;
+    let pressPosition = std_vec2(0, 0);
     let mouseOffset = std_vec2(0, 0);
 
     let horizontal = is(x)
@@ -455,21 +460,32 @@ function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY } = {}) 
 
         /** @param {PointerEvent} event */
         onPointerDown: event => {
-            if (!tabby_editMode.value()) {
+            if (!tabby_editMode.value() || event.button !== 0) {
                 return;
             }
 
             const that = widget.getBoundingClientRect();
             mouseOffset = std_vec2(event.x - that.x, event.y - that.y);
-
-            widget.setPointerCapture(event.pointerId);
-            moving = true;
+            pressPosition = std_vec2(event.x, event.y);
+            pressed = true;
         },
 
         /** @param {PointerEvent} event */
         onPointerMove: event => {
-            if (!moving) {
+            if (!pressed) {
                 return;
+            }
+
+            if (!moving) {
+                if (Math.hypot(event.x - pressPosition.x, event.y - pressPosition.y) < TABBY_DRAG_THRESHOLD) {
+                    return;
+                }
+
+                // Capturing on pointer down would retarget the click to the widget, so buttons inside would never
+                // receive it. Capturing only once dragging starts keeps clicks working and still prevents a drag
+                // from ending with a click inside the widget.
+                widget.setPointerCapture(event.pointerId);
+                moving = true;
             }
 
             const that = widget.getBoundingClientRect();
@@ -490,12 +506,26 @@ function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY } = {}) 
 
         /** @param {PointerEvent} event */
         onPointerUp: event => {
+            pressed = false;
+
             if (!moving) {
                 return;
             }
 
             context.setPosition(horizontal.offset, vertical.offset, horizontal.anchor, vertical.anchor);
             widget.releasePointerCapture(event.pointerId);
+            moving = false;
+        },
+
+        onPointerCancel: () => {
+            pressed = false;
+
+            if (!moving) {
+                return;
+            }
+
+            // keep the position reached so far, the same as a regular drop
+            context.setPosition(horizontal.offset, vertical.offset, horizontal.anchor, vertical.anchor);
             moving = false;
         }
     }, content);

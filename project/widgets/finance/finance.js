@@ -9,6 +9,14 @@ const FINANCE_RING_RADIUS = 44;
 const FINANCE_RING_GAP = 1.5;
 const FINANCE_CURRENCIES =["CZK", "EUR", "USD", "GBP", "PLN", "CHF", "HUF", "JPY"];
 
+const FINANCE_TYPE_EXPENSE = "expense";
+const FINANCE_TYPE_INCOME = "income";
+/** Wording per category type */
+const FINANCE_TYPES = {
+    [FINANCE_TYPE_EXPENSE]: { name: "Expense", add: "Add Expense", edit: "Edit Expense", icon: "nf-fa-minus" },
+    [FINANCE_TYPE_INCOME]: { name: "Income", add: "Add Income", edit: "Edit Income", icon: "nf-fa-plus" },
+};
+
 const FINANCE_DIALOG_SETTINGS = {
     width: "340px",
     isDialog: true,
@@ -180,19 +188,36 @@ function finance_svg(tag, attributes = {}) {
 }
 
 /**
+ * Unknown categories are treated as expenses
+ *
+ * @param {FinanceCategory | undefined} category
+ * @return {boolean}
+ */
+function finance_isIncome(category) {
+    return category?.type === FINANCE_TYPE_INCOME;
+}
+
+/**
  * Category icon in a circle with the category color.
  *
  * @param {FinanceCategory | undefined} category
  * @return {HTMLElement}
  */
 function finance_CategoryBadge(category) {
-    return jsml.div({
-        class: "finance-badge",
-        title: category?.name ?? "Unknown category",
-        style: {
-            backgroundColor: category?.color ?? "gray"
-        }
-    }, Icon(category?.icon || "nf-fa-question", "?"));
+    const { div, span } = jsml;
+    
+    return div(
+        {
+            class: "finance-badge",
+            title: category?.name ?? "Unknown category",
+            style: {
+                backgroundColor: category?.color ?? "gray"
+            }
+        },
+        category?.icon.length === 1
+            ? span(_, category.icon)
+            : Icon(category?.icon || "nf-fa-question", "?")
+    );
 }
 
 
@@ -208,10 +233,12 @@ class FinanceWidget extends TabbyWidget {
     #chart;
     /** @type {HTMLElement} */
     #center;
-    /** @type {SVGSVGElement} */
+    /** @type {SVGElement} */
     #ring;
     /** @type {HTMLElement} */
     #recent;
+    /** @type {HTMLElement} */
+    #flow;
 
     /** @type {FinanceCategory[]} */
     #categories = [];
@@ -229,39 +256,48 @@ class FinanceWidget extends TabbyWidget {
 
         this.#config = config;
         this.setConfig(config);
+        
+        const { div, button, span } = jsml;
 
-        this.#center = jsml.div("center");
+        this.#center = div("center");
         this.#ring = finance_svg("svg", {
             class: "ring",
             viewBox: "0 0 100 100"
         });
-        this.#chart = jsml.div({
+        this.#chart = div({
             class: "chart",
             onClick: () => this.toggleExpanded()
         }, [this.#ring, this.#center]);
 
-        this.#recent = jsml.div("recent");
+        this.#recent = div("recent");
+        this.#flow = div("flow");
 
-        this.#display = jsml.div("w-finance", [
+        this.#display = div("w-finance", [
             this.#chart,
-            jsml.div("details", [
+            this.#flow,
+            div("details", [
                 this.#recent,
-                jsml.button({
-                    class: "add",
-                    onClick: () => this.addExpense()
-                }, [Icon("nf-fa-plus", "+"), jsml.span(_, "Add")])
+                div("add-buttons", [FINANCE_TYPE_EXPENSE, FINANCE_TYPE_INCOME].map(type =>
+                    button({
+                        class: "add " + type,
+                        onClick: () => this.addTransaction(type)
+                    }, [
+                        Icon(FINANCE_TYPES[type].icon, "+"),
+                        span(_, FINANCE_TYPES[type].add)
+                    ])
+                ))
             ])
         ]);
 
         // other tabs may have added expenses, or a new month may have started
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible" && this.#element?.isConnected) {
-                this.refresh();
+                this.refresh().then();
             }
         });
 
         this.render();
-        this.refresh();
+        this.refresh().then();
     }
 
 
@@ -279,6 +315,14 @@ class FinanceWidget extends TabbyWidget {
      */
     get activeCategories() {
         return this.#categories.filter(category => !category.isDeleted);
+    }
+
+    /**
+     * @param {FinanceCategoryType} type
+     * @return {FinanceCategory[]}
+     */
+    activeCategoriesOf(type) {
+        return this.activeCategories.filter(category => (category.type ?? FINANCE_TYPE_EXPENSE) === type);
     }
 
     /**
@@ -343,36 +387,35 @@ class FinanceWidget extends TabbyWidget {
     }
 
     toggleExpanded() {
-        if (tabby_editMode.value()) {
-            return;
-        }
-
         this.#isExpanded = !this.#isExpanded;
         this.#display.classList.toggle("expanded", this.#isExpanded);
     }
 
     render() {
         this.renderChart();
+        this.renderFlow();
         this.renderRecent();
     }
 
     renderChart() {
         this.#center.textContent = "";
+        const { span } = jsml;
 
         if (this.#isAvailable === false) {
             this.renderRing([{ color: "var(--finance-remaining)", fraction: 1 }]);
             this.#chart.title = this.#unavailableReason;
-            jsml_addContent(this.#center, jsml.span("label", "API unavailable"));
+            this.#center.append(span("label", "API unavailable"));
             return;
         }
 
         if (!is(this.#summary)) {
             this.renderRing([{ color: "var(--finance-remaining)", fraction: 1 }]);
-            jsml_addContent(this.#center, jsml.span("label", "Loading…"));
+            this.#center.append(span("label", "Loading…"));
             return;
         }
 
-        const spent = this.#summary.total;
+        // the ring shows how the budget is used, so only expenses count against it
+        const spent = this.#summary.expenses;
         const balance = this.target - spent;
         const isOver = balance < 0;
         // when over budget the categories fill the whole ring relative to each other
@@ -385,11 +428,11 @@ class FinanceWidget extends TabbyWidget {
 
         if (whole > 0) {
             for (const { categoryId, total } of this.#summary.totals) {
-                if (total <= 0) {
+                const category = this.category(categoryId);
+                if (total <= 0 || finance_isIncome(category)) {
                     continue;
                 }
 
-                const category = this.category(categoryId);
                 const fraction = total / whole;
                 segments.push({ color: category?.color ?? "gray", fraction });
                 titles.push(`${category?.name ?? "Unknown"}: ${finance_formatMoney(total, this.currency)}`);
@@ -406,12 +449,47 @@ class FinanceWidget extends TabbyWidget {
         this.#chart.title = titles.join("\n");
 
         jsml_addContent(this.#center, [
-            jsml.span(
+            span(
                 "balance " + (isOver ? "negative" : "positive"),
                 finance_formatMoney(balance, this.currency)
             ),
-            jsml.span("label", isOver ? "over budget" : "left this month")
+            span("label", isOver ? "over budget" : "left this month")
         ]);
+    }
+
+    /**
+     * Income vs expenses of the month as two bars scaled to the larger of the two, kept apart from the ring so the
+     * ring only shows the budget usage
+     */
+    renderFlow() {
+        this.#flow.textContent = "";
+        this.#flow.hidden = !is(this.#summary) || this.#isAvailable === false;
+
+        if (this.#flow.hidden) {
+            return;
+        }
+        
+        const { div, span } = jsml;
+        const { income, expenses } = this.#summary;
+        const largest = Math.max(income, expenses);
+        const net = income - expenses;
+
+        this.#flow.title = `${net < 0 ? "Net loss" : "Net"} this month: ${finance_formatMoney(net, this.currency)}`;
+
+        for (const [type, value] of [[FINANCE_TYPE_INCOME, income], [FINANCE_TYPE_EXPENSE, expenses]]) {
+            this.#flow.append(
+                div("flow-row " + type, [
+                    Icon(FINANCE_TYPES[type].icon, type === FINANCE_TYPE_INCOME ? "+" : "-"),
+                    div("bar", div({
+                        class: "fill",
+                        style: {
+                            width: std_percentage(largest > 0 ? value / largest : 0)
+                        }
+                    })),
+                    span("value", finance_formatMoney(value, this.currency))
+                ])
+            );
+        }
     }
 
     /**
@@ -452,31 +530,58 @@ class FinanceWidget extends TabbyWidget {
     }
 
     renderRecent() {
+        const { div, span } = jsml;
         this.#recent.textContent = "";
 
         const recent = this.#summary?.recent ?? [];
         if (recent.length === 0) {
-            this.#recent.append(jsml.div("empty", "No expenses yet"));
+            this.#recent.append(div("empty", "No transactions yet"));
             return;
         }
 
-        for (const expense of recent) {
-            const isForeign = expense.currency !== expense.baseCurrency;
+        for (const transaction of recent) {
+            const category = this.category(transaction.categoryId);
+            const isIncome = finance_isIncome(category);
+            const isForeign = transaction.currency !== transaction.baseCurrency;
 
             this.#recent.append(
-                jsml.div("expense", [
-                    finance_CategoryBadge(this.category(expense.categoryId)),
-                    jsml.div("info", [
-                        jsml.span("note", expense.note || this.category(expense.categoryId)?.name || ""),
-                        jsml.span("date", finance_formatDate(expense.date))
+                div({
+                    class: "transaction " + (isIncome ? FINANCE_TYPE_INCOME : FINANCE_TYPE_EXPENSE),
+                    onClick: async () => {
+                        const api = finance_api();
+                        if (this.#isAvailable !== true) {
+                            await window_alert("Finance API is not available: " + this.#unavailableReason, WINDOW_ALERT_SETTINGS);
+                            return;
+                        }
+                        
+                        const categories = this.activeCategoriesOf(category.type);
+                        await finance_openTransactionDialog(
+                            this,
+                            {
+                                transaction,
+                                type: category.type,
+                                categories,
+                                currency: this.currency,
+                                submit: draft => finance_send(api.transactions, "PUT", draft),
+                                remove: async () => await finance_send(api.transactions, 'DELETE', { id: transaction.id })
+                            },
+                        );
+                        
+                        await this.refresh();
+                    }
+                }, [
+                    finance_CategoryBadge(category),
+                    div("info", [
+                        span("note", transaction.note || category?.name || ""),
+                        span("date", finance_formatDate(transaction.date))
                     ]),
-                    jsml.div("amount", [
-                        jsml.span(_, finance_formatMoney(expense.amount, expense.currency)),
+                    div("amount", [
+                        span(_, finance_formatMoney(transaction.amount, transaction.currency)),
                         Optional(isForeign,
-                            jsml.span({
+                            span({
                                 class: "converted",
-                                title: `1 ${expense.currency} = ${expense.rate} ${expense.baseCurrency}`
-                            }, "≈ " + finance_formatMoney(expense.amount * expense.rate, expense.baseCurrency))
+                                title: `1 ${transaction.currency} = ${transaction.rate} ${transaction.baseCurrency}`
+                            }, "≈ " + finance_formatMoney(transaction.amount * transaction.rate, transaction.baseCurrency))
                         )
                     ])
                 ])
@@ -489,114 +594,35 @@ class FinanceWidget extends TabbyWidget {
         return this.#element;
     }
 
-    async addExpense() {
-        console.log('add expense');
-        
+    /**
+     * @param {FinanceCategoryType} type
+     */
+    async addTransaction(type) {
         const api = finance_api();
         if (this.#isAvailable !== true) {
             await window_alert("Finance API is not available: " + this.#unavailableReason, WINDOW_ALERT_SETTINGS);
             return;
         }
 
-        if (this.activeCategories.length === 0) {
-            await window_alert("Create a category in the widget inspector first", WINDOW_ALERT_SETTINGS);
-            return;
-        }
-
-        const saved = await finance_openExpenseDialog(
-            this.activeCategories,
-            this.currency,
-            draft => finance_send(api.transactions, "POST", draft)
+        const categories = this.activeCategoriesOf(type);
+        await finance_openTransactionDialog(
+            this,
+            {
+                type,
+                categories,
+                currency: this.currency,
+                submit: draft => finance_send(api.transactions, "POST", draft),
+            },
         );
 
-        if (saved) {
-            await this.refresh();
-        }
+        await this.refresh();
     }
 
-    /**
-     * @param {Opt<FinanceCategory>} category
-     * @returns {Promise<Opt<FinanceCategory>>}
-     */
-    inspectCategory(category = undefined) {
-        return new Promise(resolve => {
-            const result = is(category)
-                ? { ...category }
-                : {
-                    name: "",
-                    icon: "",
-                    color: FINANCE_DEFAULT_COLOR
-                };
-
-            let ret = undefined;
-
-            const preview = jsml.div("finance-category-preview");
-            const updatePreview = () => {
-                preview.textContent = "";
-                preview.append(finance_CategoryBadge(result));
-            };
-
-            const colorPicker = new ColorPicker(true);
-            colorPicker.rootElement.addEventListener("pick", evt => {
-                result.color = ColorPicker.toHex(evt.detail);
-                updatePreview();
-            });
-            colorPicker.setNewFromFormat(result.color);
-
-            const w = window_create(
-                "Category",
-                jsml.div("text-window", [
-                    preview,
-
-                    TextFieldInspector(result.name, value => {
-                        result.name = value.trim();
-                        updatePreview();
-                        return true;
-                    }, "Name"),
-
-                    TextFieldInspector(result.icon, value => {
-                        result.icon = value.trim();
-                        updatePreview();
-                        return true;
-                    }, "Icon", "nf-fa-house"),
-
-                    colorPicker.rootElement,
-
-                    jsml.div("controls", [
-                        jsml.button({
-                            onClick: async () => {
-                                if (result.name === "" || result.icon === "") {
-                                    await window_alert("Name and icon must be set", WINDOW_ALERT_SETTINGS);
-                                    return;
-                                }
-
-                                ret = result;
-                                window_close(w);
-                            }
-                        }, 'Ok'),
-
-                        jsml.button({
-                            onClick: () => {
-                                window_close(w);
-                            }
-                        }, 'Cancel'),
-                    ])
-                ]),
-                {
-                    isDialog: true,
-                    isDraggable: true,
-                    isMinimizable: false
-                }
-            );
-
-            updatePreview();
-            w.addEventListener(EVENT_WINDOW_CLOSED, () => resolve(ret));
-            window_open(w);
-        });
-    }
+    
 
     /**
      * @param {FinanceCategory} category
+     * @return {FinanceCategory}
      */
     async saveCategory(category) {
         const api = finance_api();
@@ -605,12 +631,15 @@ class FinanceWidget extends TabbyWidget {
             return;
         }
 
-        if (!is(await finance_send(api.categories, is(category.id) ? "PUT" : "POST", category))) {
+        const response = await finance_send(api.categories, is(category.id) ? "PUT" : "POST", category);
+        if (!is(response)) {
             return;
         }
 
         await this.refresh();
         tabby_inspect(this.inspect());
+        
+        return response;
     }
 
     inspect() {
@@ -625,7 +654,12 @@ class FinanceWidget extends TabbyWidget {
             selectedCategory = undefined;
         };
 
-        for (const category of this.activeCategories) {
+        const categories = [
+            ...this.activeCategoriesOf(FINANCE_TYPE_EXPENSE),
+            ...this.activeCategoriesOf(FINANCE_TYPE_INCOME),
+        ];
+
+        for (const category of categories) {
             const item = jsml.div({
                 class: "category",
                 onClick: () => {
@@ -642,7 +676,12 @@ class FinanceWidget extends TabbyWidget {
                 }
             }, [
                 finance_CategoryBadge(category),
-                jsml.span(_, category.name)
+                jsml.span("name", category.name),
+                jsml.span("type finance-badge " + category.type, Icon(
+                    category.type === 'income'
+                        ? 'nf-md-trending_up'
+                        : 'nf-md-trending_down'
+                ))
             ]);
 
             items.append(item);
@@ -695,7 +734,7 @@ class FinanceWidget extends TabbyWidget {
                 jsml.div('row', [
                     jsml.button({
                         onClick: async () => {
-                            const category = await this.inspectCategory();
+                            const category = await finance_openCategoryDialog();
                             if (!is(category)) {
                                 return;
                             }
@@ -709,7 +748,7 @@ class FinanceWidget extends TabbyWidget {
                                 return;
                             }
 
-                            const category = await this.inspectCategory(selectedCategory);
+                            const category = await finance_openCategoryDialog(selectedCategory);
                             if (!is(category)) {
                                 return;
                             }
@@ -777,55 +816,161 @@ function finance_sanitizeAmount(value) {
 }
 
 /**
- * @param {FinanceCategory[]} categories
- * @param {string} currency preferred currency
- * @param {(draft: FinanceTransactionDraft) => Promise<any>} submit resolves to undefined when saving failed
- * @return {Promise<boolean>} whether the expense was saved
+ * @param {Opt<FinanceCategory>} category
+ * @returns {Promise<Opt<FinanceCategory>>}
  */
-function finance_openExpenseDialog(categories, currency, submit) {
+function finance_openCategoryDialog(category = null) {
     return new Promise(resolve => {
+        const result = is(category)
+            ? { ...category }
+            : {
+                name: "",
+                icon: "",
+                color: FINANCE_DEFAULT_COLOR,
+                type: FINANCE_TYPE_EXPENSE
+            };
+        
+        result.type ??= FINANCE_TYPE_EXPENSE;
+        
+        let ret = undefined;
+        
+        const preview = jsml.div("finance-category-preview");
+        const updatePreview = () => {
+            preview.textContent = "";
+            preview.append(finance_CategoryBadge(result));
+        };
+        
+        const colorPicker = new ColorPicker(true);
+        colorPicker.rootElement.addEventListener("pick", evt => {
+            result.color = ColorPicker.toHex(evt.detail);
+            updatePreview();
+        });
+        colorPicker.setNewFromFormat(result.color);
+        
+        const w = window_create(
+            "Category",
+            jsml.div("text-window", [
+                preview,
+                
+                RadioGroupInspector(
+                    value => {
+                        result.type = value;
+                        return true;
+                    },
+                    [FINANCE_TYPE_EXPENSE, FINANCE_TYPE_INCOME].map(type => ({
+                        text: FINANCE_TYPES[type].name,
+                        value: type,
+                        selected: type === result.type
+                    })),
+                    "Type"
+                ),
+                
+                TextFieldInspector(result.name, value => {
+                    result.name = value.trim();
+                    updatePreview();
+                    return true;
+                }, "Name"),
+                
+                TextFieldInspector(result.icon, value => {
+                    result.icon = value.trim();
+                    updatePreview();
+                    return true;
+                }, "Icon", "nf-fa-house"),
+                
+                colorPicker.rootElement,
+                
+                jsml.div("controls", [
+                    jsml.button({
+                        onClick: async () => {
+                            if (result.name === "" || result.icon === "") {
+                                await window_alert("Name and icon must be set", WINDOW_ALERT_SETTINGS);
+                                return;
+                            }
+                            
+                            ret = result;
+                            window_close(w);
+                        }
+                    }, 'Ok'),
+                    
+                    jsml.button({
+                        onClick: () => {
+                            window_close(w);
+                        }
+                    }, 'Cancel'),
+                ])
+            ]),
+            {
+                isDialog: true,
+                isDraggable: true,
+                isMinimizable: false
+            }
+        );
+        
+        updatePreview();
+        w.addEventListener(EVENT_WINDOW_CLOSED, () => resolve(ret));
+        window_open(w);
+    });
+}
+
+/**
+ * @param {FinanceWidget} financeWidget
+ * @param {FinanceTransactionDialogProps} props
+ * @return {Promise<boolean>} whether the transaction was saved
+ */
+function finance_openTransactionDialog(financeWidget, props) {
+    return new Promise(resolve => {
+        const { type, categories, currency, submit, transaction } = props;
+        const { div, button, span, input, select } = jsml;
+        
+        /** @type {Map<any, FinanceCategory>} */
+        const categoryMap = new Map();
+        for (const category of categories) {
+            categoryMap.set(category.id, category);
+        }
+        
         let saved = false;
         let isSubmitting = false;
-        /** @type {FinanceCategory | undefined} */
-        let selectedCategory = undefined;
+        /** @type {FinanceCategory|undefined} */
+        let selectedCategory = categoryMap.get(transaction?.categoryId);
 
         const categoryButtons = categories.map(category => {
-            const button = jsml.button({
-                class: "category",
+            const btn = button({
+                class: cls("category", { selected: category.id === selectedCategory?.id }),
                 type: "button",
                 onClick: () => {
                     for (const b of categoryButtons) {
-                        b.classList.toggle("selected", b === button);
+                        b.classList.toggle("selected", b === btn);
                     }
 
                     selectedCategory = category;
                 }
             }, [
                 finance_CategoryBadge(category),
-                jsml.span(_, category.name)
+                span(_, category.name)
             ]);
 
-            return button;
+            return btn;
         });
 
-        const dateInput = jsml.input({ type: "date", value: finance_isoDate() });
-        const noteInput = jsml.input({ type: "text", placeholder: "Note" });
+        const dateInput = input({ type: "date", value: transaction?.date ?? finance_isoDate() });
+        const noteInput = input({ type: "text", value: transaction?.note, placeholder: "Note" });
 
-        const currencySelect = jsml.select(_, FINANCE_CURRENCIES.map(c =>
-            new Option(c, c, _, c === currency)
+        const curr = transaction?.currency ?? currency;
+        const currencySelect = select(_, FINANCE_CURRENCIES.map(c =>
+            new Option(c, c, _, c === curr)
         ));
 
-        const amountInput = jsml.input({
+        const amountInput = input({
             class: "amount-input",
             type: "text",
             inputmode: "decimal",
             autocomplete: "off",
-            placeholder: "0",
+            placeholder: "100",
             onInput: () => setAmount(amountInput.value),
             onKeydown: event => {
                 if (event.key === "Enter") {
                     event.preventDefault();
-                    trySubmit();
+                    trySubmit().then();
                 }
             }
         });
@@ -836,6 +981,10 @@ function finance_openExpenseDialog(categories, currency, submit) {
                 amountInput.value = sanitized;
             }
         };
+        
+        if (is(transaction)) {
+            setAmount(String(transaction.amount));
+        }
 
         const press = key => {
             switch (key) {
@@ -853,20 +1002,20 @@ function finance_openExpenseDialog(categories, currency, submit) {
             }
         };
 
-        const keypad = jsml.div("keypad", [
-            ..."789⌫456C123".split("").map(key => jsml.button({
-                class: "key" + (/[0-9]/.test(key) ? "" : " function"),
+        const keypad = div("keypad", [
+            ..."789⌫456C123".split("").map(key => button({
+                class: cls("key", { function: /[0-9]/.test(key) }),
                 type: "button",
                 tabindex: "-1",
                 onClick: () => press(key)
             }, key)),
-            jsml.button({ class: "key zero", type: "button", tabindex: "-1", onClick: () => press("0") }, "0"),
-            jsml.button({ class: "key", type: "button", tabindex: "-1", onClick: () => press(".") }, "."),
-            jsml.button({
+            button({ class: "key zero", type: "button", tabindex: "-1", onClick: () => press("0") }, "0"),
+            button({ class: "key", type: "button", tabindex: "-1", onClick: () => press(".") }, "."),
+            button({
                 class: "key submit",
                 type: "button",
                 tabindex: "-1",
-                title: "Add expense",
+                title: FINANCE_TYPES[type][is(transaction) ? 'edit' : 'add'],
                 onClick: () => trySubmit()
             }, Icon("nf-fa-check", "✓"))
         ]);
@@ -898,6 +1047,7 @@ function finance_openExpenseDialog(categories, currency, submit) {
 
             isSubmitting = true;
             const result = await submit({
+                id: transaction?.id,
                 categoryId: selectedCategory.id,
                 date: dateInput.value,
                 amount,
@@ -916,13 +1066,45 @@ function finance_openExpenseDialog(categories, currency, submit) {
         };
 
         const w = window_create(
-            "Add expense",
-            jsml.div("finance-dialog", [
-                jsml.div("categories", categoryButtons),
+            FINANCE_TYPES[type][is(transaction) ? 'edit' : 'add'],
+            div("finance-dialog " + type, [
+                div("categories", [
+                    ...categoryButtons,
+                    button({
+                        class: "category",
+                        style: { padding: "9px" },
+                        onClick: async () => {
+                            const args = [financeWidget, props];
+                            
+                            window_close(w);
+                            const category = await finance_openCategoryDialog();
+                            if (!is(category)) {
+                                finance_openTransactionDialog(...args).then();
+                                return;
+                            }
+                            
+                            props.categories.push(
+                                await financeWidget.saveCategory(category)
+                            );
+                            
+                            finance_openTransactionDialog(...args).then();
+                        },
+                    }, [Icon('nf-fa-plus'), ' Add'])
+                ]),
                 LabelAndComponentInspector("field", "Date", dateInput),
                 LabelAndComponentInspector("field", "Note", noteInput),
-                jsml.div("amount", [amountInput, currencySelect]),
-                keypad
+                div("amount", [amountInput, currencySelect]),
+                keypad,
+                Optional(is(transaction), div("row", button({
+                    onClick: async () => {
+                        if (await window_confirm("Do you want to delete this transaction?") && await props.remove(transaction)) {
+                            window_close(w);
+                        }
+                    }
+                }, [
+                    Icon('nf-oct-trash'),
+                    ' Delete'
+                ])))
             ]),
             FINANCE_DIALOG_SETTINGS
         );

@@ -34,7 +34,7 @@ class BookmarksWidget extends TabbyWidget {
             this.#display.append(
                 jsml.a(
                     {
-                        class: "bookmark center " + (item.isTitleIcon ? "icon" : ""),
+                        class: cls("bookmark center", { icon: item.isTitleIcon }),
                         href: item.link,
                         style: {
                             backgroundColor: item.color

@@ -13,12 +13,24 @@ export type FinanceApi = {
     summary: string,
 };
 
+declare type FinanceCategoryType = "expense" | "income";
+
+declare type FinanceTransactionDialogProps = {
+    type: FinanceCategoryType,
+    categories: FinanceCategory[],
+    currency: string,
+    submit: (draft: FinanceTransaction) => Promise<any>,
+    remove?: (transaction: FinanceTransaction) => Promise<any>,
+    transaction?: FinanceTransaction
+}
+
 declare type FinanceCategory = {
     id?: number,
     name: string,
     /** nerd font icon class, e.g. nf-fa-house */
     icon: string,
     color: string,
+    type: FinanceCategoryType,
     /** deleted categories are sent only in a summary that still references them */
     isDeleted?: boolean,
 };
@@ -38,7 +50,7 @@ declare type FinanceTransactionDraft = {
 declare type FinanceTransaction = FinanceTransactionDraft & {
     id: number,
     /** 1 `currency` = `rate` `baseCurrency`, fixed at the time of saving (1 when the currencies match) */
-    rate: number,
+    rate?: number,
 };
 
 declare type FinanceCategoryTotal = {
@@ -51,8 +63,11 @@ declare type FinanceSummary = {
     /** YYYY-MM */
     month: string,
     currency: string,
-    /** sum of all expenses in the month, in `currency` */
-    total: number,
+    /** sum of the month's transactions in expense categories, in `currency` */
+    expenses: number,
+    /** sum of the month's transactions in income categories, in `currency` */
+    income: number,
+    /** per category of both types */
     totals: FinanceCategoryTotal[],
     categories: FinanceCategory[],
     /** newest first */

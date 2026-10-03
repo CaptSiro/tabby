@@ -39,7 +39,7 @@ class Finance {
 
     public const PATTERN_CURRENCY = '/^[A-Z]{3}$/';
     public const PATTERN_COLOR = '/^#[0-9a-f]{6}([0-9a-f]{2})?$/i';
-    public const PATTERN_ICON = '/^nf-[a-z0-9_-]+$/i';
+    public const PATTERN_ICON = '/^(:?nf-[a-z0-9_-]+)|(?:[A-Za-z])$/i';
     public const PATTERN_MONTH = '/^\d{4}-(0[1-9]|1[0-2])$/';
 
 

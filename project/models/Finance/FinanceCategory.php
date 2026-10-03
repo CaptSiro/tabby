@@ -9,11 +9,17 @@ use core\database\sql\Model;
 use core\database\sql\Table;
 
 /**
- * Serialized as FinanceCategory { id, name, icon, color, isDeleted } (widgets/finance/finance.d.ts)
+ * Serialized as FinanceCategory { id, name, icon, color, type, isDeleted } (widgets/finance/finance.d.ts)
  */
 #[Database(App::DATABASE)]
 #[Table('finance_category')]
 class FinanceCategory extends Model {
+    public const TYPE_EXPENSE = 'expense';
+    public const TYPE_INCOME = 'income';
+    public const TYPES = [self::TYPE_EXPENSE, self::TYPE_INCOME];
+
+
+
     #[Column('id_finance_category', Column::TYPE_INTEGER, isPrimaryKey: true)]
     public int $id;
 
@@ -25,6 +31,10 @@ class FinanceCategory extends Model {
 
     #[Column(type: Column::TYPE_STRING)]
     public string $color;
+
+    /** One of TYPES */
+    #[Column(type: Column::TYPE_STRING)]
+    public string $type;
 
     #[Column('created_at', Column::TYPE_DATETIME)]
     public string $createdAt;
@@ -54,6 +64,7 @@ class FinanceCategory extends Model {
             'name' => $this->name,
             'icon' => $this->icon,
             'color' => $this->color,
+            'type' => $this->type,
             'isDeleted' => $this->isDeleted(),
         ];
     }
