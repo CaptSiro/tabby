@@ -1,3 +1,10 @@
+import { FinanceApi } from "./widgets/finance/finance";
+
+declare type TabbyApi = {
+    randomBackground: string,
+    finance?: FinanceApi,
+}
+
 export type TabbyAnchor = "start" | "center" | "end" | string;
 
 export type TabbyWidgetConfig = {

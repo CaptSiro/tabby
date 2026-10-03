@@ -4,6 +4,7 @@ use components\Admin\Admin;
 use components\Icon;
 use core\sideloader\importers\Css\Css;
 use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
 use project\components\Frame;
 
 Css::import($this->getResource('../tabby.css'));
@@ -30,6 +31,8 @@ $this->loadWidgets($this->getResource('../widgets'));
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
+            
+            <h3><?= Html::escape($this->tr('Widgets')) ?></h3>
         </div>
         
         <div class="handle">

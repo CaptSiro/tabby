@@ -1,3 +1,12 @@
+/**
+ * @return {TabbyApi|null|any}
+ */
+function api_loadTabby() {
+    return api_getObject("#api-startuh");
+}
+
+
+
 const TABBY_ANIMATION_DURATION = 500;
 const TABBY_KEY_LAYOUT = "tabby_layout";
 const TABBY_KEY_EDIT_MODE = "tabby_edit-mode";

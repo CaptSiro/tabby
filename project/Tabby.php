@@ -27,7 +27,23 @@ class Tabby {
             json_encode([
                 'randomBackground' => $request->getDomain()
                     ->createUrl(Path::from('/random-background'))
-                    ->toString()
+                    ->toString(),
+
+                // FinanceApi in widgets/finance/finance.d.ts, routes in bootstrap.php
+                'finance' => [
+                    'health' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/health'))
+                        ->toString(),
+                    'categories' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/categories'))
+                        ->toString(),
+                    'transactions' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/transactions'))
+                        ->toString(),
+                    'summary' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/summary'))
+                        ->toString(),
+                ],
             ]),
             [
                 'type' => 'application/json',

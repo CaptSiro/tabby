@@ -53,6 +53,8 @@ main {
 
         & .widgets,
         & .inspector-container {
+            overflow-y: auto;
+            overflow-x: hidden;
             opacity: 1;
             transition: 100ms 400ms linear;
         }
