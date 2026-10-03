@@ -360,7 +360,9 @@ $router->use('/finance/transactions', function (Request $request, Response $resp
             $fields = Finance::body($request, $response);
             $transaction = FinanceTransaction::fromId($fields->getStrict('id'));
             $transaction->delete();
-            $response->sendStatus(200);
+            
+            $response->setStatus(200);
+            $response->json(['message' => 'ok']);
             break;
         }
         

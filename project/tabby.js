@@ -10,6 +10,8 @@ function api_loadTabby() {
 const TABBY_ANIMATION_DURATION = 500;
 /** Pixels the pointer has to travel before a widget starts to be dragged in edit mode */
 const TABBY_DRAG_THRESHOLD = 4;
+/** Unit of the saved widget offsets, older configs without it store fractions of the container size */
+const TABBY_POSITION_UNIT = "px";
 const TABBY_KEY_LAYOUT = "tabby_layout";
 const TABBY_KEY_EDIT_MODE = "tabby_edit-mode";
 const TABBY_KEY_WIDGETS = "tabby_widgets";
@@ -271,7 +273,8 @@ class FunctionalTabbyBuilder {
             x: 0,
             y: 0,
             anchorX: "center",
-            anchorY: "center"
+            anchorY: "center",
+            positionUnit: TABBY_POSITION_UNIT
         });
     }
 
@@ -321,12 +324,12 @@ class TabbyWidget {
             NumberInspector(this.position.x, value => {
                 this.setPosition(value, this.position.y, this.anchorX, this.anchorY);
                 return true;
-            }, "Position X", _, '%'),
-            
+            }, "Position X", _, 'px'),
+
             NumberInspector(this.position.y, value => {
                 this.setPosition(this.position.x, value, this.anchorX, this.anchorY);
                 return true;
-            }, "Position Y", _, '%'),
+            }, "Position Y", _, 'px'),
             
             SelectInspector(value => {
                 this.setPosition(this.position.x, this.position.y, value, this.anchorY);
@@ -365,6 +368,7 @@ class TabbyWidget {
             y: this.position.y,
             anchorX: this.anchorX,
             anchorY: this.anchorY,
+            positionUnit: TABBY_POSITION_UNIT,
         }
     }
 }
@@ -373,7 +377,7 @@ class TabbyWidget {
 
 /**
  * Picks the anchor whose point on the widget (start edge, center, end edge) is closest to the same point on the
- * container and computes the offset from it as a fraction of the container size.
+ * container and computes the offset from it in pixels.
  *
  * @param {number} start widget start edge relative to the container
  * @param {number} size widget size
@@ -396,38 +400,38 @@ function tabby_closestAnchor(start, size, containerSize) {
 
     return {
         anchor: closest.anchor,
-        offset: closest.distance / containerSize
+        offset: Math.round(closest.distance)
     };
 }
 
 /**
- * Positions the widget along one axis purely with CSS, so the browser keeps it in place when the container or the
- * widget itself is resized. Widgets have `margin: auto` and `fit-content` size, so when both insets are set
- * the widget is centered between them.
+ * Positions the widget along one axis purely with CSS, so the browser keeps it at the same distance from its anchor
+ * when the container or the widget itself is resized. Widgets have `margin: auto` and `fit-content` size, so when
+ * both insets are set the widget is centered between them.
  *
  * @param {HTMLElement} element
  * @param {TabbyAnchor} anchor
- * @param {number} offset fraction of the container size
+ * @param {number} offset pixels from the anchor
  * @param {"left" | "top"} startProperty
  * @param {"right" | "bottom"} endProperty
  */
 function tabby_placeAxis(element, anchor, offset, startProperty, endProperty) {
-    const percentage = value => (value * 100) + "%";
+    const pixels = value => value + "px";
 
     switch (anchor) {
         case "end":
             element.style[startProperty] = "auto";
-            element.style[endProperty] = percentage(offset);
+            element.style[endProperty] = pixels(offset);
             break;
 
         case "center":
             // shrinking the centering region from one side by twice the offset moves its middle by the offset
-            element.style[startProperty] = percentage(Math.max(0, 2 * offset));
-            element.style[endProperty] = percentage(Math.max(0, -2 * offset));
+            element.style[startProperty] = pixels(Math.max(0, 2 * offset));
+            element.style[endProperty] = pixels(Math.max(0, -2 * offset));
             break;
 
         default:
-            element.style[startProperty] = percentage(offset);
+            element.style[startProperty] = pixels(offset);
             element.style[endProperty] = "auto";
             break;
     }
@@ -440,8 +444,9 @@ function tabby_placeAxis(element, anchor, offset, startProperty, endProperty) {
  * @param {number | undefined} y
  * @param {TabbyAnchor | undefined} anchorX
  * @param {TabbyAnchor | undefined} anchorY
+ * @param {string | undefined} positionUnit missing in configs that store the offsets as fractions of the container
  */
-function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY } = {}) {
+function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY, positionUnit } = {}) {
     // pointer is down, but the widget is not dragged until it moves past TABBY_DRAG_THRESHOLD
     let pressed = false;
     let moving = false;
@@ -454,6 +459,16 @@ function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY } = {}) 
     let vertical = is(y)
         ? { anchor: anchorY ?? "start", offset: y }
         : { anchor: "center", offset: 0 };
+
+    if (positionUnit !== TABBY_POSITION_UNIT) {
+        // Offsets used to be fractions of the container, convert them once with the current container size, so the
+        // widget stays where it was. The pixels are stored on the next save, without saving here, because the widget
+        // is not registered yet while it is being instantiated.
+        const container = tabby_content.getBoundingClientRect();
+        horizontal.offset = Math.round(horizontal.offset * container.width);
+        vertical.offset = Math.round(vertical.offset * container.height);
+        context.position = new Vec2(horizontal.offset, vertical.offset);
+    }
 
     const widget = jsml.div({
         class: "widget glass",

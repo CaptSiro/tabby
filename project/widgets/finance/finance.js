@@ -18,7 +18,7 @@ const FINANCE_TYPES = {
 };
 
 const FINANCE_DIALOG_SETTINGS = {
-    width: "340px",
+    width: "400px",
     isDialog: true,
     isDraggable: true,
     isMinimizable: false
@@ -953,6 +953,23 @@ function finance_openTransactionDialog(financeWidget, props) {
         });
 
         const dateInput = input({ type: "date", value: transaction?.date ?? finance_isoDate() });
+        /**
+         * @param {Date} date
+         */
+        const setDate = date => {
+            dateInput.value = date.toISOString().split('T')[0];
+        }
+        
+        /**
+         * @param {number} days
+         * @param {Date | undefined} date
+         */
+        const offsetDate = (days, date = undefined) => {
+            date ??= new Date(dateInput.value);
+            date.setDate(date.getDate() + days);
+            setDate(date);
+        }
+        
         const noteInput = input({ type: "text", value: transaction?.note, placeholder: "Note" });
 
         const curr = transaction?.currency ?? currency;
@@ -1065,6 +1082,13 @@ function finance_openTransactionDialog(financeWidget, props) {
             window_close(w);
         };
 
+        const OffsetDateButton = offset => button(
+            { onClick: () => offsetDate(offset) },
+            offset > 0
+                ? "+" + offset
+                : String(offset)
+        );
+        
         const w = window_create(
             FINANCE_TYPES[type][is(transaction) ? 'edit' : 'add'],
             div("finance-dialog " + type, [
@@ -1091,10 +1115,23 @@ function finance_openTransactionDialog(financeWidget, props) {
                         },
                     }, [Icon('nf-fa-plus'), ' Add'])
                 ]),
-                LabelAndComponentInspector("field", "Date", dateInput),
+                div(_, [
+                    LabelAndComponentInspector("field", "Date", dateInput),
+                    div({ style: { display: "flex", marginTop: "2px", justifyContent: "space-between" } }, [
+                        OffsetDateButton(-3),
+                        OffsetDateButton(-2),
+                        OffsetDateButton(-1),
+                        button({ onClick: () => setDate(new Date()) }, 'Now'),
+                        OffsetDateButton(+1),
+                        OffsetDateButton(+2),
+                        OffsetDateButton(+3),
+                    ])
+                ]),
                 LabelAndComponentInspector("field", "Note", noteInput),
-                div("amount", [amountInput, currencySelect]),
-                keypad,
+                div(_, [
+                    div("amount", [amountInput, currencySelect]),
+                    keypad,
+                ]),
                 Optional(is(transaction), div("row", button({
                     onClick: async () => {
                         if (await window_confirm("Do you want to delete this transaction?") && await props.remove(transaction)) {
