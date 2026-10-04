@@ -1,6 +1,9 @@
 :root {
     --finance-remaining: rgba(255, 255, 255, 0.55);
     --finance-badge-size: 32px;
+    --finance-positive: #04724f;
+    --finance-negative: #830e30;
+    --finance-container: rgba(255, 255, 255, 0.35);
 }
 
 
@@ -71,11 +74,11 @@
         font-weight: 700;
 
         &.positive {
-            color: var(--success);
+            color: var(--finance-positive);
         }
 
         &.negative {
-            color: var(--error);
+            color: var(--finance-negative);
         }
     }
 
@@ -91,6 +94,10 @@
         gap: var(--gap-smaller);
     }
 
+    .chart .center {
+        z-index: 10;
+    }
+
     &.expanded .chart .center,
     &.expanded .flow,
     &.expanded .details {
@@ -99,53 +106,63 @@
     }
 
     & .flow {
-        width: 180px;
+        width: 100%;
         display: none;
         flex-direction: column;
-        gap: 2px;
+        padding: 8px;
+        border-radius: var(--border-radius);
+        background-color: var(--finance-container);
 
         &[hidden] {
             display: none;
         }
-    }
 
-    & .flow-row {
-        display: grid;
-        grid-template-columns: 1rem 1fr auto;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        & .flow-row {
+            display: grid;
+            grid-template-columns: 1rem 1fr auto;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            font-size: 0.8rem;
+            font-weight: 600;
 
-        & .nf {
-            text-align: center;
-        }
-
-        & .bar {
-            height: 6px;
-            border-radius: 3px;
-            overflow: hidden;
-            background-color: var(--finance-remaining);
-        }
-
-        & .fill {
-            height: 100%;
-            border-radius: 3px;
-        }
-
-        &.income {
-            color: var(--success);
-
-            & .fill {
-                background-color: var(--success);
+            & .nf {
+                text-align: center;
+                font-size: 1.4em;
+                margin-top: 4px;
             }
-        }
 
-        &.expense {
-            color: var(--error);
+            & .bar {
+                height: 6px;
+                border-radius: 3px;
+                overflow: hidden;
+                background-color: var(--finance-remaining);
+            }
 
             & .fill {
-                background-color: var(--error);
+                height: 100%;
+                border-radius: 3px;
+            }
+
+            & span.value {
+                min-width: 75px;
+                text-align: right;
+            }
+
+            &.income {
+                color: var(--finance-positive);
+
+                & .fill {
+                    background-color: var(--finance-positive);
+                }
+            }
+
+            &.expense {
+                color: var(--finance-negative);
+
+                & .fill {
+                    background-color: var(--finance-negative);
+                }
             }
         }
     }
@@ -169,7 +186,7 @@
         gap: var(--gap-smaller);
         padding: 8px;
         border-radius: var(--border-radius);
-        background-color: rgba(255, 255, 255, 0.35);
+        background-color: var(--finance-container);
 
         &:hover {
             cursor: pointer;
@@ -201,24 +218,28 @@
     }
 
     & .transaction.income .amount > :first-child {
-        color: var(--success);
+        color: var(--finance-positive);
     }
 
     & .transaction.expense .amount > :first-child {
-        color: var(--error);
+        color: var(--finance-negative);
     }
 
     & .add-buttons {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: var(--gap-smaller);
-    }
 
-    & .add {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 6px;
+        & .add {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+
+            & i {
+                font-size: 1.2em;
+            }
+        }
     }
 }
 
@@ -272,12 +293,12 @@
             font-size: unset;
 
             &.income {
-                color: var(--success);
+                color: var(--finance-positive);
                 opacity: 1;
             }
 
             &.expense {
-                color: var(--error);
+                color: var(--finance-negative);
                 opacity: 1;
             }
         }
@@ -386,6 +407,6 @@
     }
 
     &.income .keypad .submit {
-        background-color: var(--success);
+        background-color: var(--finance-positive);
     }
 }

@@ -6,15 +6,15 @@ const FINANCE_DEFAULT_COLOR = '#4e79a7';
 /** In the 100x100 view box of the ring, stroke width is set in CSS */
 const FINANCE_RING_RADIUS = 44;
 /** Percent of the circumference between two segments */
-const FINANCE_RING_GAP = 1.5;
+const FINANCE_RING_GAP = 0;
 const FINANCE_CURRENCIES =["CZK", "EUR", "USD", "GBP", "PLN", "CHF", "HUF", "JPY"];
 
 const FINANCE_TYPE_EXPENSE = "expense";
 const FINANCE_TYPE_INCOME = "income";
 /** Wording per category type */
 const FINANCE_TYPES = {
-    [FINANCE_TYPE_EXPENSE]: { name: "Expense", add: "Add Expense", edit: "Edit Expense", icon: "nf-fa-minus" },
-    [FINANCE_TYPE_INCOME]: { name: "Income", add: "Add Income", edit: "Edit Income", icon: "nf-fa-plus" },
+    [FINANCE_TYPE_EXPENSE]: { name: "Expense", add: "Add Expense", edit: "Edit Expense", icon: "nf-md-cash_minus" },
+    [FINANCE_TYPE_INCOME]: { name: "Income", add: "Add Income", edit: "Edit Income", icon: "nf-md-cash_plus" },
 };
 
 const FINANCE_DIALOG_SETTINGS = {
@@ -506,6 +506,18 @@ class FinanceWidget extends TabbyWidget {
         const gap = segments.length > 1 ? FINANCE_RING_GAP : 0;
         let start = 0;
 
+        const inner = finance_svg("circle", {
+            cx: 50,
+            cy: 50,
+            r: FINANCE_RING_RADIUS - 8,
+            pathLength: 100,
+        });
+        
+        inner.style.stroke = 'transparent';
+        inner.style.fill = 'rgba(255, 255, 255, 0.35)';
+        
+        this.#ring.append(inner);
+        
         for (const { color, fraction } of segments) {
             const length = fraction * 100;
             // segments too short for a gap are drawn whole

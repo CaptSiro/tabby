@@ -36,6 +36,7 @@ class BookmarksWidget extends TabbyWidget {
                     {
                         class: cls("bookmark center", { icon: item.isTitleIcon }),
                         href: item.link,
+                        target: "_top",
                         style: {
                             backgroundColor: item.color
                         }
