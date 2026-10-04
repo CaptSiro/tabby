@@ -44,6 +44,16 @@ class Tabby {
                         ->createUrl(Path::from('/finance/summary'))
                         ->toString(),
                 ],
+
+                // CalendarApi in widgets/calendar/calendar.d.ts, routes in bootstrap.php
+                'calendar' => [
+                    'health' => $request->getDomain()
+                        ->createUrl(Path::from('/calendar/health'))
+                        ->toString(),
+                    'events' => $request->getDomain()
+                        ->createUrl(Path::from('/calendar/events'))
+                        ->toString(),
+                ],
             ]),
             [
                 'type' => 'application/json',

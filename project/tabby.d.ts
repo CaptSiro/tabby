@@ -1,8 +1,10 @@
 import { FinanceApi } from "./widgets/finance/finance";
+import { CalendarApi } from "./widgets/calendar/calendar";
 
 declare type TabbyApi = {
     randomBackground: string,
     finance?: FinanceApi,
+    calendar?: CalendarApi,
 }
 
 export type TabbyAnchor = "start" | "center" | "end" | string;

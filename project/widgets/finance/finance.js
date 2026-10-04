@@ -222,6 +222,39 @@ function finance_CategoryBadge(category) {
 
 
 
+/**
+ * `RadioGroupInspector` with the label on the left and the radios as a segmented slider on the right. The highlight
+ * slides to the checked radio.
+ *
+ * @param {Setter<string>} setter
+ * @param {{ text: string, value: string, selected?: boolean }[]} radios
+ * @param {string} label
+ * @return {HTMLElement}
+ */
+function finance_RadioSlider(setter, radios, label) {
+    const group = RadioGroupInspector(setter, radios, label);
+    group.classList.add("finance-radio-slider");
+
+    const items = [...group.querySelectorAll(".radio-container")];
+    const track = jsml.div("track", items);
+    track.style.setProperty("--count", String(items.length));
+
+    const update = () => {
+        const index = items.findIndex(item => item.querySelector("input").checked);
+        track.style.setProperty("--index", String(Math.max(0, index)));
+        track.classList.toggle("unset", index === -1);
+    };
+
+    // the group listens for changes, the radios keep notifying it from inside the track
+    group.append(track);
+    group.addEventListener("change", update);
+    update();
+
+    return group;
+}
+
+
+
 class FinanceWidget extends TabbyWidget {
     /** @type {FinanceWidgetConfig} */
     #config;
@@ -864,7 +897,7 @@ function finance_openCategoryDialog(category = null) {
             jsml.div("text-window", [
                 preview,
                 
-                RadioGroupInspector(
+                finance_RadioSlider(
                     value => {
                         result.type = value;
                         return true;

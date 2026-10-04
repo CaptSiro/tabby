@@ -28,6 +28,7 @@ use models\fs\File;
 use models\Setting\Setting;
 use project\components\Frame;
 use project\Finance;
+use project\models\Calendar\CalendarEvent;
 use project\models\Finance\FinanceCategory;
 use project\models\Finance\FinanceRate;
 use project\models\Finance\FinanceTransaction;
@@ -510,6 +511,142 @@ $router->use('/finance/summary', function (Request $request, Response $response)
         'categories' => $categories,
         'recent' => $recentTransactions,
     ]);
+});
+
+
+
+// Calendar widget (client: project/widgets/calendar/calendar.js, types: calendar.d.ts, tables: project/sql/003-calendar.sql)
+// Datetimes are in local time of the client, so the client sends where its day starts
+
+// GET: Lets the widget check whether the API can be used
+$router->use('/calendar/health', function (Request $request, Response $response) {
+    $lexicon = Lexicon::group(Tabby::LEXICON_GROUP);
+
+    if ($request->getHttpMethod() !== HttpMethod::GET) {
+        $response->sendMessage($lexicon->tr('Invalid HTTP method'), HttpCode::CE_METHOD_NOT_ALLOWED);
+    }
+
+    try {
+        CalendarEvent::count();
+    } catch (PDOException) {
+        $response->sendMessage(
+            $lexicon->tr('Calendar database is not initialized'),
+            HttpCode::SE_SERVICE_UNAVAILABLE
+        );
+    }
+
+    $response->json([
+        'available' => true
+    ]);
+});
+
+$router->use('/calendar/events', function (Request $request, Response $response) {
+    $lexicon = Lexicon::group(Tabby::LEXICON_GROUP);
+    $labelMaxLength = 250;
+
+    switch ($request->getHttpMethod()) {
+        // GET ?from=YYYY-MM-DD (start of the client's today)
+        case HttpMethod::GET: {
+            // 1. Validate from, 400 with message.
+            $from = $request->getUrl()->getQuery()->get('from');
+            if (!Finance::isDate($from)) {
+                $response->sendMessage($lexicon->tr('From must be a valid date in YYYY-MM-DD format'), HttpCode::CE_BAD_REQUEST);
+            }
+
+            // 2. Load events of today and later (done or not) and unfinished events before today, in chronological order.
+            $factory = CalendarEvent::getDescription()->getFactory();
+            $events = $factory->allExecute(
+                $factory->allQuery(where: Query::infer('`datetime` >= ? OR `is_done` = 0', "$from 00:00:00"))
+                    ->order('`datetime`')
+                    ->order('`id_calendar_event`')
+            );
+
+            $response->json($events);
+            break;
+        }
+
+        // POST (create) / PUT (update), JSON body CalendarEventDraft { id?, label, datetime, isDone }
+        case HttpMethod::POST:
+        case HttpMethod::PUT: {
+            // 1. Decode JSON body, 400 when it is not a JSON object.
+            $fields = Finance::body($request, $response);
+            $label = $fields->get('label');
+            $datetime = $fields->get('datetime');
+            $isDone = $fields->get('isDone', false);
+
+            // 2. Validate label, datetime and isDone, 400 with message.
+            if (!Finance::isText($label, $labelMaxLength)) {
+                $response->sendMessage(
+                    Lexicon::format($lexicon->tr('Label must be a non-empty text of at most {} characters'), (string) $labelMaxLength),
+                    HttpCode::CE_BAD_REQUEST
+                );
+            }
+
+            $parsed = is_string($datetime)
+                ? DateTime::createFromFormat('!Y-m-d H:i:s', $datetime)
+                : false;
+
+            if ($parsed === false || $parsed->format('Y-m-d H:i:s') !== $datetime || intval($parsed->format('Y')) < 1000) {
+                $response->sendMessage(
+                    $lexicon->tr('Datetime must be a valid date and time in YYYY-MM-DD HH:MM:SS format'),
+                    HttpCode::CE_BAD_REQUEST
+                );
+            }
+
+            if (!is_bool($isDone)) {
+                $response->sendMessage($lexicon->tr('IsDone must be a boolean'), HttpCode::CE_BAD_REQUEST);
+            }
+
+            // 3. POST: new event. PUT: event by body.id, 404 when missing.
+            $now = Sql::datetimeNow();
+
+            if ($request->getHttpMethod() === HttpMethod::POST) {
+                $event = new CalendarEvent();
+                $event->createdAt = $now;
+            } else {
+                $id = $fields->get('id');
+                $event = is_int($id)
+                    ? CalendarEvent::fromId($id)
+                    : null;
+
+                if (is_null($event)) {
+                    $response->sendMessage($lexicon->tr('Event not found'), HttpCode::CE_NOT_FOUND);
+                }
+            }
+
+            // 4. Set label, datetime, isDone, save and respond with the event.
+            $event->label = trim($label);
+            $event->datetime = $datetime;
+            $event->isDone = $isDone;
+            $event->updatedAt = $now;
+            $event->save();
+
+            $response->json($event);
+            break;
+        }
+
+        // DELETE ?id=
+        case HttpMethod::DELETE: {
+            // 1. Load event by id, 404 when missing.
+            $id = $request->getUrl()->getQuery()->get('id');
+            $event = is_string($id) && ctype_digit($id)
+                ? CalendarEvent::fromId(intval($id))
+                : null;
+
+            if (is_null($event)) {
+                $response->sendMessage($lexicon->tr('Event not found'), HttpCode::CE_NOT_FOUND);
+            }
+
+            // 2. Delete and respond 204 without body.
+            $event->delete();
+            $response->sendStatus(HttpCode::S_NO_CONTENT);
+            break;
+        }
+
+        default: {
+            $response->sendMessage($lexicon->tr('Invalid HTTP method'), HttpCode::CE_METHOD_NOT_ALLOWED);
+        }
+    }
 });
 
 
