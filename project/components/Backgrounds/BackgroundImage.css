@@ -1,0 +1,138 @@
+.background-image {
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    grid-template-rows: 100%;
+
+    & .background-image-view {
+        min-width: 0;
+        background-color: black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        & img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+    }
+
+    & .background-image-panel {
+        padding: var(--gap);
+        overflow-y: auto;
+        border-left: 2px solid var(--container-2);
+        background-color: var(--container-0);
+    }
+
+    & .background-image-listing {
+        align-self: flex-start;
+    }
+
+    & .background-image-filter {
+        color: var(--text-2);
+        font-size: 0.9rem;
+    }
+
+    & .background-image-name {
+        overflow-wrap: anywhere;
+    }
+
+    & .background-image-navigation > * {
+        flex: 1;
+        text-align: center;
+    }
+
+    & .background-image-navigation .edge {
+        outline: 2px solid var(--error);
+    }
+
+    & .background-image-sets {
+        flex-wrap: wrap;
+        gap: var(--gap-smaller);
+    }
+
+    & .background-image-sets-empty {
+        color: var(--text-2);
+    }
+
+    & .background-set-search {
+        width: 100%;
+        padding: 0.55rem 0.75rem;
+        font-size: 1rem;
+        color: var(--text-0);
+        background-color: var(--container-0);
+        border: 2px solid var(--container-3);
+        border-radius: var(--border-radius);
+        outline: none;
+
+        &:focus {
+            border-color: var(--accent-3);
+        }
+    }
+
+    & .background-set-options {
+        display: none;
+        margin-top: var(--gap-smaller);
+        max-height: 320px;
+        overflow-y: auto;
+        border: 2px solid var(--container-2);
+        border-radius: var(--border-radius);
+        background-color: var(--container-1);
+    }
+
+    & .background-set-select:focus-within .background-set-options:not(:empty) {
+        display: block;
+    }
+
+    & .background-set-option {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        overflow-wrap: anywhere;
+
+        &.active {
+            background-color: var(--accent-0);
+        }
+
+        &.create {
+            font-style: italic;
+        }
+
+        &.note {
+            cursor: default;
+            color: var(--text-2);
+        }
+    }
+
+    & .background-image-shortcuts {
+        margin-top: auto;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px var(--gap-smaller);
+        font-size: 0.85rem;
+        color: var(--text-2);
+
+        & kbd {
+            padding: 0 4px;
+            border-radius: var(--border-radius-smaller);
+            border: 1px solid var(--container-3);
+            background-color: var(--container-1);
+            font-family: inherit;
+        }
+    }
+}
+
+@media (max-width: 800px) {
+    .background-image {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 100%;
+        grid-template-rows: 60vh auto;
+
+        & .background-image-panel {
+            border-left: none;
+            border-top: 2px solid var(--container-2);
+        }
+    }
+}

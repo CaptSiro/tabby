@@ -1,10 +1,13 @@
 import { FinanceApi } from "./widgets/finance/finance";
 import { CalendarApi } from "./widgets/calendar/calendar";
+import { BackgroundsApi } from "./components/Backgrounds/backgrounds";
 
 declare type TabbyApi = {
+    /** GET ?set= (id of a background set, all images without it) */
     randomBackground: string,
     finance?: FinanceApi,
     calendar?: CalendarApi,
+    backgrounds?: BackgroundsApi,
 }
 
 export type TabbyAnchor = "start" | "center" | "end" | string;

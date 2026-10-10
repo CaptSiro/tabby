@@ -16,6 +16,8 @@ const TABBY_KEY_LAYOUT = "tabby_layout";
 const TABBY_KEY_EDIT_MODE = "tabby_edit-mode";
 const TABBY_KEY_WIDGETS = "tabby_widgets";
 const TABBY_KEY_RANDOM_BACKGROUNDS = "tabby_random_backgrounds";
+/** Id of the background set the random background is chosen from, all images when missing */
+const TABBY_KEY_RANDOM_BACKGROUND_SET = "tabby_random_background_set";
 
 const tabby_editMode = new Impulse({ default: false });
 const tabby_content = $(".layers > .content");
@@ -84,8 +86,7 @@ async function tabby_chooseRandomBackground() {
         return;
     }
 
-    const chooseRandomly = JSON.parse(localStorage.getItem(TABBY_KEY_RANDOM_BACKGROUNDS ?? "false"));
-    if (!chooseRandomly) {
+    if (!tabby_isRandomBackground()) {
         image.src = image.dataset.default;
         return;
     }
@@ -95,7 +96,13 @@ async function tabby_chooseRandomBackground() {
         return;
     }
 
-    const response = await fetch(api.randomBackground);
+    const url = new URL(api.randomBackground);
+    const set = localStorage.getItem(TABBY_KEY_RANDOM_BACKGROUND_SET);
+    if (is(set) && is(api.backgrounds)) {
+        url.searchParams.set(api.backgrounds.setQuery, set);
+    }
+
+    const response = await fetch(url);
     if (await std_fetch_handleServerError(response)) {
         return;
     }
@@ -108,17 +115,82 @@ async function tabby_chooseRandomBackground() {
     image.src = (await response.json()).file;
 }
 
+function tabby_isRandomBackground() {
+    return JSON.parse(localStorage.getItem(TABBY_KEY_RANDOM_BACKGROUNDS) ?? "false") === true;
+}
+
+/**
+ * Select of the set the random background is chosen from (BackgroundsApi in components/Backgrounds/backgrounds.d.ts)
+ *
+ * @return {Promise<HTMLElement>}
+ */
+async function tabby_BackgroundSetInspector() {
+    const backgrounds = api_loadTabby()?.backgrounds;
+    if (!is(backgrounds)) {
+        return NoteInspector('Background sets are not available');
+    }
+
+    let response;
+    try {
+        response = await fetch(backgrounds.sets);
+    } catch {
+        return NoteInspector('Server is not reachable');
+    }
+
+    if (!response.ok) {
+        return NoteInspector('Background sets are not available');
+    }
+
+    /** @type {BackgroundSetSummary[]} */
+    const sets = await response.json();
+    const stored = localStorage.getItem(TABBY_KEY_RANDOM_BACKGROUND_SET);
+
+    // the set has been deleted, all images are used instead
+    if (is(stored) && !sets.some(x => String(x.id) === stored)) {
+        localStorage.removeItem(TABBY_KEY_RANDOM_BACKGROUND_SET);
+    }
+
+    const options = [
+        { value: "", text: "All images" },
+        ...sets.map(x => ({ value: String(x.id), text: `${x.name} (${x.count})` }))
+    ];
+
+    return SelectInspector(async value => {
+        if (value === "") {
+            localStorage.removeItem(TABBY_KEY_RANDOM_BACKGROUND_SET);
+        } else {
+            localStorage.setItem(TABBY_KEY_RANDOM_BACKGROUND_SET, value);
+        }
+
+        await tabby_chooseRandomBackground();
+        return true;
+    }, selectOption(options, localStorage.getItem(TABBY_KEY_RANDOM_BACKGROUND_SET) ?? "", ""), 'Background set');
+}
+
 function tabby_defaultInspect() {
+    const isRandom = tabby_isRandomBackground();
+    const backgrounds = api_loadTabby()?.backgrounds;
+
+    // shown only when the background is chosen randomly
+    const setContainer = jsml.div({ class: isRandom ? "" : "hide" }, Async(tabby_BackgroundSetInspector));
+
     return [
         TitleInspector('Tabby'),
 
         HRInspector(),
 
-        CheckboxInspector(Boolean(localStorage.getItem(TABBY_KEY_RANDOM_BACKGROUNDS) ?? "false"), async value => {
+        CheckboxInspector(isRandom, async value => {
             localStorage.setItem(TABBY_KEY_RANDOM_BACKGROUNDS, JSON.stringify(value));
+            setContainer.classList.toggle("hide", !value);
             await tabby_chooseRandomBackground();
             return true;
-        }, 'Randomly choose background image')
+        }, 'Randomly choose background image'),
+
+        setContainer,
+
+        Optional(is(backgrounds),
+            Link(backgrounds?.listing, 'Manage background sets')
+        ),
     ];
 }
 

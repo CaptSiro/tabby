@@ -10,10 +10,10 @@ use Generator;
 use SplFileInfo;
 
 class Tabby {
-    public const LEXICON_GROUP = 'startuh';
+    public const LEXICON_GROUP = 'tabby';
 
-    public const SETTING_BACKGROUND_DIRECTORY_OS = 'startuh:background_directory_os';
-    public const SETTING_BACKGROUND_DIRECTORY_OS_HASH = 'startuh:background_directory_os_hash';
+    public const SETTING_BACKGROUND_DIRECTORY_OS = 'tabby:background_directory_os';
+    public const SETTING_BACKGROUND_DIRECTORY_OS_HASH = 'tabby:background_directory_os_hash';
     public const HASH_ALGORITHM = 'md5';
 
 
@@ -53,6 +53,20 @@ class Tabby {
                     'events' => $request->getDomain()
                         ->createUrl(Path::from('/calendar/events'))
                         ->toString(),
+                ],
+
+                // BackgroundsApi in components/Backgrounds/backgrounds.d.ts, routes in BackgroundController
+                'backgrounds' => [
+                    'listing' => $request->getDomain()
+                        ->createUrl(Path::from('/backgrounds'))
+                        ->toString(),
+                    'sets' => $request->getDomain()
+                        ->createUrl(Path::from('/backgrounds/sets'))
+                        ->toString(),
+                    'membership' => $request->getDomain()
+                        ->createUrl(Path::from('/backgrounds/membership'))
+                        ->toString(),
+                    'setQuery' => Backgrounds::QUERY_SET,
                 ],
             ]),
             [

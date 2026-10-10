@@ -1,0 +1,104 @@
+<?php /** @var BackgroundImage $this */
+
+use components\Icon;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
+use project\Backgrounds;
+use project\components\Backgrounds\BackgroundImage;
+
+Css::importDefault($this);
+Javascript::importDefault($this);
+
+$previousUrl = $this->getPreviousUrl();
+$nextUrl = $this->getNextUrl();
+
+?><main
+    class="background-image"
+    x-init="backgrounds_image"
+    data-state="<?= Html::escapeAttribute(json_encode($this->getState(), JSON_INVALID_UTF8_SUBSTITUTE)) ?>"
+>
+    <div class="background-image-view">
+        <img
+            src="<?= Html::escapeAttribute($this->getImageUrl()) ?>"
+            alt="<?= Html::escapeAttribute($this->image->getFileName()) ?>"
+        >
+    </div>
+
+    <aside class="background-image-panel column">
+        <a class="button background-image-listing" href="<?= Html::escapeAttribute($this->getListingUrl()) ?>">
+            <?= Icon::nf('nf-fa-th', '#') ?>
+            <?= Html::escape($this->tr('Back to listing')) ?>
+        </a>
+
+        <div class="column-smaller">
+            <span class="background-image-filter"><?= Html::escape($this->getFilterLabel()) ?></span>
+            <h2 class="background-image-name"><?= Html::escape($this->image->getFileName()) ?></h2>
+        </div>
+
+        <nav class="background-image-navigation row">
+            <?php if (is_null($previousUrl)): ?>
+                <button type="button" class="background-image-previous" disabled>
+                    <?= Icon::nf('nf-fa-arrow_left', '<') ?>
+                    <?= Html::escape($this->tr('Previous')) ?>
+                </button>
+            <?php else: ?>
+                <a class="button background-image-previous" href="<?= Html::escapeAttribute($previousUrl) ?>">
+                    <?= Icon::nf('nf-fa-arrow_left', '<') ?>
+                    <?= Html::escape($this->tr('Previous')) ?>
+                </a>
+            <?php endif; ?>
+
+            <?php if (is_null($nextUrl)): ?>
+                <button type="button" class="background-image-next" disabled>
+                    <?= Html::escape($this->tr('Next')) ?>
+                    <?= Icon::nf('nf-fa-arrow_right', '>') ?>
+                </button>
+            <?php else: ?>
+                <a class="button background-image-next" href="<?= Html::escapeAttribute($nextUrl) ?>">
+                    <?= Html::escape($this->tr('Next')) ?>
+                    <?= Icon::nf('nf-fa-arrow_right', '>') ?>
+                </a>
+            <?php endif; ?>
+        </nav>
+
+        <section class="column-smaller">
+            <h3><?= Html::escape($this->tr('Sets')) ?></h3>
+
+            <div class="background-image-sets row">
+                <span class="background-image-sets-empty"><?= Html::escape($this->tr('The image is not in any set')) ?></span>
+            </div>
+        </section>
+
+        <div class="background-set-select">
+            <input
+                class="background-set-search"
+                type="text"
+                maxlength="<?= Backgrounds::SET_NAME_MAX_LENGTH ?>"
+                placeholder="<?= Html::escapeAttribute($this->tr('Add to set or create a new one...')) ?>"
+                aria-label="<?= Html::escapeAttribute($this->tr('Add to set')) ?>"
+                autocomplete="off"
+                autofocus
+            >
+
+            <div class="background-set-options" role="listbox"></div>
+        </div>
+
+        <dl class="background-image-shortcuts">
+            <dt><kbd>PageUp</kbd> / <kbd>PageDown</kbd></dt>
+            <dd><?= Html::escape($this->tr('Previous / next image')) ?></dd>
+
+            <dt><kbd>&uarr;</kbd> / <kbd>&darr;</kbd></dt>
+            <dd><?= Html::escape($this->tr('Choose set')) ?></dd>
+
+            <dt><kbd>Enter</kbd></dt>
+            <dd><?= Html::escape($this->tr('Add to the chosen set or create it')) ?></dd>
+
+            <dt><kbd>Tab</kbd> + <kbd>Enter</kbd></dt>
+            <dd><?= Html::escape($this->tr('Remove from the focused set')) ?></dd>
+
+            <dt><kbd>Esc</kbd></dt>
+            <dd><?= Html::escape($this->tr('Clear search, back to listing when empty')) ?></dd>
+        </dl>
+    </aside>
+</main>

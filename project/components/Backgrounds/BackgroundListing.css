@@ -1,0 +1,59 @@
+.background-listing {
+    & .background-listing-header {
+        flex-wrap: wrap;
+
+        & h1 {
+            flex: 1;
+        }
+    }
+
+    & .background-listing-filter select {
+        padding: 0.5em 1em;
+        border-radius: var(--border-radius);
+        color: var(--text-0);
+        background-color: var(--container-0);
+        border: 2px solid var(--container-3);
+    }
+
+    & .background-listing-note {
+        color: var(--text-2);
+    }
+
+    & .background-listing-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: var(--gap);
+    }
+
+    & .background-card {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: var(--border-radius);
+        border: 2px solid var(--container-2);
+        background-color: var(--container-1);
+        outline: 2px solid transparent;
+        transition: outline-color 100ms linear;
+
+        &:hover,
+        &:focus-visible {
+            outline-color: var(--accent-3);
+        }
+
+        & img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            display: block;
+            background-color: var(--container-2);
+        }
+    }
+
+    & .background-card-name {
+        padding: var(--gap-smaller);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 0.9rem;
+    }
+}

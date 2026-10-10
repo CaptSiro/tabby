@@ -1,0 +1,83 @@
+<?php /** @var BackgroundListing $this */
+
+use components\Icon;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
+use project\Backgrounds;
+use project\components\Backgrounds\BackgroundListing;
+
+Css::importDefault($this);
+Javascript::importDefault($this);
+
+$filterValue = $this->getFilterValue();
+
+?><main class="background-listing page-section column">
+    <header class="background-listing-header row">
+        <a class="button" href="<?= Html::escapeAttribute($this->getDashboardUrl()) ?>">
+            <?= Icon::nf('nf-fa-arrow_left', '<') ?>
+            <?= Html::escape($this->tr('Dashboard')) ?>
+        </a>
+
+        <h1><?= Html::escape($this->tr('Background images')) ?></h1>
+
+        <label class="background-listing-filter row">
+            <span><?= Html::escape($this->tr('Show')) ?></span>
+
+            <select x-init="backgrounds_listingFilter">
+                <option
+                    value="<?= Html::escapeAttribute($this->controller->createListingUrl()) ?>"
+                    <?= $filterValue === '' ? 'selected' : '' ?>
+                ><?= Html::escape($this->tr('All images')) ?> (<?= $this->countAll ?>)</option>
+
+                <option
+                    value="<?= Html::escapeAttribute($this->controller->createListingUrl(Backgrounds::FILTER_NONE)) ?>"
+                    <?= $filterValue === Backgrounds::FILTER_NONE ? 'selected' : '' ?>
+                ><?= Html::escape($this->tr('Images without a set')) ?> (<?= $this->countNone ?>)</option>
+
+                <?php if (!empty($this->sets)): ?>
+                    <optgroup label="<?= Html::escapeAttribute($this->tr('Sets')) ?>">
+                        <?php foreach ($this->sets as $set): ?>
+                            <option
+                                value="<?= Html::escapeAttribute($this->controller->createListingUrl((string) $set['id'])) ?>"
+                                <?= $filterValue === (string) $set['id'] ? 'selected' : '' ?>
+                            ><?= Html::escape($set['name']) ?> (<?= $set['count'] ?>)</option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                <?php endif; ?>
+            </select>
+        </label>
+    </header>
+
+    <?php if (!$this->isSynchronized): ?>
+        <p class="background-listing-note">
+            <?= Html::escape($this->tr('Backgrounds directory is not well defined, only the images copied before are listed')) ?>
+        </p>
+    <?php endif; ?>
+
+    <?php if (empty($this->images)): ?>
+        <p class="background-listing-note">
+            <?= Html::escape($this->tr('No images found')) ?>
+        </p>
+    <?php else: ?>
+        <div class="background-listing-grid">
+            <?php foreach ($this->images as $image): ?>
+                <a
+                    class="background-card no-decoration"
+                    href="<?= Html::escapeAttribute($this->getImageUrl($image)) ?>"
+                    title="<?= Html::escapeAttribute($image->getFileName()) ?>"
+                >
+                    <img
+                        src="<?= Html::escapeAttribute($this->getThumbnailUrl($image)) ?>"
+                        alt="<?= Html::escapeAttribute($image->getFileName()) ?>"
+                        loading="lazy"
+                    >
+
+                    <span class="background-card-name"><?= Html::escape($image->getFileName()) ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <?= $this->getPagination() ?>
+</main>

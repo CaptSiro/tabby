@@ -26,10 +26,13 @@ use core\database\sql\Sql;
 use core\sideloader\SideLoader;
 use models\fs\File;
 use models\Setting\Setting;
+use project\Backgrounds;
 use project\components\Frame;
+use project\controllers\BackgroundController;
 use project\controllers\CalendarController;
 use project\controllers\FinanceController;
 use project\Finance;
+use project\models\Background\BackgroundSet;
 use project\models\Calendar\CalendarEvent;
 use project\models\Finance\FinanceCategory;
 use project\models\Finance\FinanceRate;
@@ -66,58 +69,44 @@ $router->expose('public', (new Assets($assetDirectories))
 
 $router->use('/', PageView::fromComponent(new Frame(false, false)));
 
+// GET ?set= (id of a background set, all images without it) &force (copy the images again)
 $router->use('/random-background', function (Request $request, Response $response) {
     $lexicon = Lexicon::group(Tabby::LEXICON_GROUP);
-    
+
     $start = microtime(true);
-    $osDirs = Setting::fromName(
-        Tabby::SETTING_BACKGROUND_DIRECTORY_OS,
-        true,
-        "",
-        [PROPERTY_EDITABLE => true]
-    )->toString();
-    
-    if (!Tabby::backgroundsExist($osDirs)) {
+    $query = $request->getUrl()->getQuery();
+
+    if (!Backgrounds::synchronize($query->exists('force'))) {
         $response->sendMessage(
             $lexicon->tr('Backgrounds directory is not well defined'),
             HttpCode::SE_INTERNAL_SERVER_ERROR
         );
     }
-    
-    $content = '';
-    foreach (Tabby::listBackgroundFiles($osDirs) as $fileInfo) {
-        $content .= $fileInfo->getFilename();
-    }
-    
-    $backgrounds = FileSystem::makeDirectory(FileSystem::getRoot(), 'Backgrounds');
-    $directoryHash = Setting::fromName(
-        Tabby::SETTING_BACKGROUND_DIRECTORY_OS_HASH,
-        true,
-        "",
-        [PROPERTY_EDITABLE => false]
-    );
-    
-    $contentHash = hash(Tabby::HASH_ALGORITHM, $content);
-    if ($directoryHash->toString() !== $contentHash || $request->getUrl()->getQuery()->exists('force')) {
-        $directoryHash->value = $contentHash;
-        $directoryHash->save();
-        
-        foreach (Tabby::listBackgroundFiles($osDirs) as $fileInfo) {
-            FileSystem::storeFile($backgrounds, $fileInfo->getRealPath());
+
+    $set = null;
+    $setId = $query->get(Backgrounds::QUERY_SET);
+    if (!is_null($setId) && $setId !== '') {
+        Backgrounds::requireDatabase($response);
+
+        $set = Backgrounds::isId($setId)
+            ? BackgroundSet::fromId(intval($setId))
+            : null;
+
+        if (is_null($set)) {
+            $response->sendMessage(
+                $lexicon->tr('Background set not found'),
+                HttpCode::CE_NOT_FOUND
+            );
         }
     }
-    
-    $factory = File::getDescription()
-        ->getFactory();
-    $image = $factory->firstExecute(
-        $factory->randomQuery()
-            ->where(File::isChildOfQuery($backgrounds))
-            ->where(File::isTypeOfQuery(File::TYPE_IMAGE))
-    );
-    
+
+    $image = Backgrounds::randomImage($set);
+
     if (is_null($image)) {
         $response->sendMessage(
-            $lexicon->tr('Backgrounds directory is empty'),
+            is_null($set)
+                ? $lexicon->tr('Backgrounds directory is empty')
+                : $lexicon->tr('Background set is empty'),
             HttpCode::CE_NOT_FOUND
         );
     }
@@ -132,6 +121,8 @@ $router->use('/random-background', function (Request $request, Response $respons
 $router->bind('/finance', new FinanceController());
 
 $router->bind('/calendar', new CalendarController());
+
+$router->bind('/backgrounds', new BackgroundController());
 
 
 
