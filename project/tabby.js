@@ -169,10 +169,25 @@ async function tabby_BackgroundSetInspector() {
 
 function tabby_defaultInspect() {
     const isRandom = tabby_isRandomBackground();
-    const backgrounds = api_loadTabby()?.backgrounds;
+    const api = api_loadTabby();
+    
+    const Links = () => {
+        if (!is(api)) {
+            return null;
+        }
+        
+        const { backgrounds, admin } = api;
+        
+        return (
+            div("column", [
+                Link(admin?.url, admin.label, { target: "_blank" }),
+                Link(backgrounds?.listing, 'Manage background sets'),
+            ])
+        )
+    }
 
     // shown only when the background is chosen randomly
-    const setContainer = jsml.div({ class: isRandom ? "" : "hide" }, Async(tabby_BackgroundSetInspector));
+    const setContainer = jsml.div(cls(_, { hide: !isRandom }), Async(tabby_BackgroundSetInspector));
 
     return [
         TitleInspector('Tabby'),
@@ -188,9 +203,7 @@ function tabby_defaultInspect() {
 
         setContainer,
 
-        Optional(is(backgrounds),
-            Link(backgrounds?.listing, 'Manage background sets')
-        ),
+        Links()
     ];
 }
 

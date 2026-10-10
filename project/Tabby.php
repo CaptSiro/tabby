@@ -2,6 +2,7 @@
 
 namespace project;
 
+use components\Admin\Admin;
 use core\App;
 use core\route\Path;
 use core\view\Html;
@@ -68,6 +69,11 @@ class Tabby {
                         ->toString(),
                     'setQuery' => Backgrounds::QUERY_SET,
                 ],
+                
+                'admin' => [
+                    'url' => Admin::getInstance()->createUrl(),
+                    'label' => Admin::getLinkLabel()
+                ]
             ]),
             [
                 'type' => 'application/json',
@@ -82,7 +88,7 @@ class Tabby {
      */
     public static function listBackgroundFiles(string $paths): Generator {
         foreach (explode(";", $paths) as $dir) {
-            if (!file_exists($dir)) {
+            if (!is_dir($dir)) {
                 continue;
             }
 
@@ -98,7 +104,7 @@ class Tabby {
 
     public static function backgroundsExist(string $paths): bool {
         foreach (explode(";", $paths) as $dir) {
-            if (!file_exists($dir)) {
+            if (!is_dir($dir)) {
                 return false;
             }
         }

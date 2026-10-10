@@ -53,7 +53,7 @@ class Footer implements ViewTemplate {
 
         return Html::wrap(
             'a',
-            $this->tr('Admin'),
+            Admin::getLinkLabel(),
             ['href' => $url]
         );
     }

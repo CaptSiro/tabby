@@ -26,6 +26,10 @@ main {
     margin-bottom: 10vh !important;
 }
 
+.inspector .select-container {
+    width: unset !important;
+}
+
 .i-number input + * {
     min-width: unset !important;
 }

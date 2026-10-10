@@ -14,8 +14,6 @@ use components\layout\Dashboard\DashboardSideBarItem;
 use components\Icon;
 use components\layout\Grid\description\GridDescription;
 use components\layout\Menu\Menu;
-use components\Message\Message;
-use components\Message\MessageType;
 use components\Modules\Modules;
 use components\nexus\Nexus;
 use components\Project;
@@ -23,10 +21,13 @@ use components\windows\LanguageSelect;
 use core\collections\Views;
 use core\database\sql\ModelDescription;
 use core\fs\FileSystem;
+use core\locale\Lexicon;
 use core\route\Path;
 use core\route\Route;
 use core\RouteChasmEnvironment;
 use core\Singleton;
+use core\url\Url;
+use core\view\Html;
 use core\view\View;
 use models\Domain\Domain;
 use models\fs\ImageVariantBehavior;
@@ -47,6 +48,10 @@ class Admin extends Dashboard {
     use Singleton;
 
     public const LEXICON_GROUP = 'dashboard.admin';
+    
+    public static function getLinkLabel(): string {
+        return Lexicon::translate(self::LEXICON_GROUP, 'Admin');
+    }
 
 
 

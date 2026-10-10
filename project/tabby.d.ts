@@ -8,6 +8,10 @@ declare type TabbyApi = {
     finance?: FinanceApi,
     calendar?: CalendarApi,
     backgrounds?: BackgroundsApi,
+    admin: {
+        url: string,
+        label: string
+    },
 }
 
 export type TabbyAnchor = "start" | "center" | "end" | string;
