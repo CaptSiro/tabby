@@ -4,6 +4,8 @@
     --finance-positive: #04724f;
     --finance-negative: #830e30;
     --finance-container: rgba(255, 255, 255, 0.35);
+    --finance-reminder: #e0242f;
+    --finance-investment: #2f5f9e;
 }
 
 
@@ -36,6 +38,7 @@
         display: grid;
         place-items: center;
         cursor: pointer;
+        position: relative;
 
         /* ring and center share the single grid cell */
         & > * {
@@ -50,14 +53,6 @@
     & .ring {
         width: 100%;
         height: 100%;
-        /* arcs start at the top and go clockwise */
-        transform: rotate(-90deg);
-        overflow: visible;
-    }
-
-    & .segment {
-        fill: none;
-        stroke-width: 8;
     }
 
     & .center {
@@ -102,6 +97,82 @@
     &.expanded .flow,
     &.expanded .details {
         display: flex;
+        animation: finance-dropdown 200ms ease-out;
+    }
+
+    /* due investing reminder, deliberately small and without any text */
+    & .invest-dot {
+        position: absolute;
+        top: 9%;
+        right: 9%;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--finance-reminder);
+        outline: 2px solid white;
+        z-index: 11;
+        pointer-events: none;
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    & .invest-bar {
+        width: 100%;
+        display: none;
+        grid-template-columns: 1rem auto 1fr auto;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: var(--border-radius);
+        background-color: var(--finance-container);
+        font-size: 0.8rem;
+        font-weight: 600;
+
+        & > .nf {
+            text-align: center;
+            font-size: 1.3em;
+        }
+
+        & .label {
+            font-size: inherit;
+        }
+
+        & .value {
+            text-align: right;
+
+            &.negative {
+                color: var(--finance-negative);
+            }
+
+            &.unset {
+                font-weight: 400;
+                opacity: 0.7;
+            }
+        }
+
+        & .invest-button {
+            position: relative;
+            padding: 2px 8px;
+            font-size: 1.1em;
+
+            &.due::after {
+                content: "";
+                position: absolute;
+                top: -3px;
+                right: -3px;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: var(--finance-reminder);
+                outline: 2px solid white;
+            }
+        }
+    }
+
+    &.expanded .invest-bar:not([hidden]) {
+        display: grid;
         animation: finance-dropdown 200ms ease-out;
     }
 
@@ -179,18 +250,70 @@
         padding: var(--gap-smaller);
     }
 
-    & .transaction {
+    & .add-buttons {
         display: grid;
-        grid-template-columns: var(--finance-badge-size) 1fr auto;
-        align-items: center;
+        grid-template-columns: 1fr 1fr;
         gap: var(--gap-smaller);
-        padding: 8px;
-        border-radius: var(--border-radius);
-        background-color: var(--finance-container);
 
-        &:hover {
-            cursor: pointer;
+        & .add {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+
+            & i {
+                font-size: 1.2em;
+            }
         }
+    }
+
+    & .all-movements {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+
+        &[hidden] {
+            display: none;
+        }
+    }
+}
+
+
+
+/* Shared with the page of all movements (components/Finance) */
+.finance-ring {
+    /* arcs start at the top and go clockwise */
+    transform: rotate(-90deg);
+    overflow: visible;
+
+    & .inner {
+        fill: var(--finance-container);
+        stroke: transparent;
+    }
+
+    & .segment {
+        fill: none;
+        stroke-width: 8;
+        transition: opacity 150ms linear;
+
+        &.dimmed {
+            opacity: 0.25;
+        }
+    }
+}
+
+.finance-movement {
+    display: grid;
+    grid-template-columns: var(--finance-badge-size) 1fr auto;
+    align-items: center;
+    gap: var(--gap-smaller);
+    padding: 8px;
+    border-radius: var(--border-radius);
+    background-color: var(--finance-container);
+
+    &:hover {
+        cursor: pointer;
     }
 
     & .info,
@@ -200,7 +323,8 @@
         min-width: 0;
     }
 
-    & .note {
+    & .note,
+    & .date {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -217,29 +341,16 @@
         font-weight: 600;
     }
 
-    & .transaction.income .amount > :first-child {
+    &.income .amount > :first-child {
         color: var(--finance-positive);
     }
 
-    & .transaction.expense .amount > :first-child {
+    &.expense .amount > :first-child {
         color: var(--finance-negative);
     }
 
-    & .add-buttons {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--gap-smaller);
-
-        & .add {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-
-            & i {
-                font-size: 1.2em;
-            }
-        }
+    &.investment .amount > :first-child {
+        color: var(--finance-investment);
     }
 }
 
@@ -465,5 +576,277 @@
 
     &.income .keypad .submit {
         background-color: var(--finance-positive);
+    }
+
+    &.investment .keypad .submit {
+        background-color: var(--finance-investment);
+    }
+}
+
+
+
+.i-finance .finance-funds-listing {
+    height: auto;
+    max-height: 30vh;
+
+    & .name {
+        display: flex;
+        flex-direction: column;
+    }
+
+    & .symbol {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+
+    & .weight {
+        font-weight: 600;
+    }
+}
+
+/* balance and half point have 6+ digits */
+.i-number input.finance-wide {
+    width: 100px;
+}
+
+.i-finance-invest {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-smaller);
+
+    & .status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--gap-smaller);
+    }
+
+    & .explanation {
+        margin: 0;
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    & .formula {
+        font-family: monospace;
+    }
+}
+
+.finance-curve {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+
+    & line {
+        stroke: currentColor;
+        stroke-width: 1;
+    }
+
+    & .axis {
+        opacity: 0.5;
+    }
+
+    & .limit {
+        stroke-dasharray: 4 3;
+        opacity: 0.6;
+    }
+
+    & .guide {
+        stroke-dasharray: 2 2;
+        opacity: 0.5;
+    }
+
+    & .curve {
+        fill: none;
+        stroke: var(--accent-1);
+        stroke-width: 2;
+    }
+
+    & .current {
+        fill: var(--finance-positive);
+        stroke: white;
+        stroke-width: 1;
+    }
+
+    & .label {
+        fill: currentColor;
+        font-size: 10px;
+        opacity: 0.8;
+    }
+
+    & .current-label {
+        font-weight: 700;
+        opacity: 1;
+    }
+}
+
+
+
+.finance-invest-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    padding: var(--gap);
+
+    & .row {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--gap-smaller);
+
+        &.strong {
+            font-weight: 700;
+        }
+    }
+
+    & .value {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    & .plan,
+    & .totals {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px;
+        border-radius: var(--border-radius);
+        background-color: var(--container-2);
+    }
+
+    & .hint,
+    & .muted {
+        font-size: 0.8rem;
+        opacity: 0.7;
+    }
+
+    & .funds {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    & .fund {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: var(--gap-smaller);
+        padding: 8px;
+        border-radius: var(--border-radius);
+        background-color: var(--container-1);
+
+        & .info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        & .name {
+            font-weight: 600;
+        }
+
+        & .symbol {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        & .quote {
+            display: flex;
+            flex-wrap: wrap;
+            column-gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        & .dip {
+            color: #4cc38a;
+            font-weight: 600;
+            cursor: help;
+        }
+
+        & .amount {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        & .amount-input {
+            width: 110px;
+            font-size: 1.1rem;
+            text-align: right;
+        }
+    }
+
+    & .field {
+        display: flex;
+        flex-direction: column;
+
+        & input {
+            width: 100%;
+        }
+    }
+
+    & .controls {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: var(--gap-smaller);
+
+        & .primary {
+            background-color: var(--accent-1);
+            color: white;
+        }
+    }
+
+    & .pause {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: var(--gap-smaller);
+        border-top: 1px solid var(--container-2);
+
+        & .pause-row {
+            display: flex;
+            align-items: center;
+            gap: var(--gap-smaller);
+
+            & input {
+                width: 64px;
+            }
+        }
+
+        & .stop {
+            align-self: flex-start;
+            margin-top: 4px;
+        }
+    }
+
+    & .recent-investments {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 0.85rem;
+
+        & h4 {
+            margin: 0 0 4px;
+        }
+
+        & .investment {
+            display: grid;
+            grid-template-columns: 4.5rem 1fr auto auto;
+            align-items: center;
+            gap: var(--gap-smaller);
+        }
+
+        & .date {
+            opacity: 0.7;
+        }
+
+        & .name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        & .remove {
+            padding: 2px 6px;
+        }
     }
 }

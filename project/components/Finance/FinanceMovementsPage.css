@@ -1,0 +1,386 @@
+/* Only loaded on this page: the widget's colors are dark for the light background image, the page follows the theme */
+:root {
+    --finance-positive: #3fbf8a;
+    --finance-negative: #f0708a;
+    --finance-investment: #7aa9e6;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --finance-positive: #04724f;
+        --finance-negative: #830e30;
+        --finance-investment: #2f5f9e;
+    }
+}
+
+.finance-movements {
+    /* the widget is drawn over the background image, the page uses the containers of the theme */
+    --finance-container: var(--container-1);
+    --finance-remaining: var(--container-2);
+    --finance-bars-height: 200px;
+
+    max-width: 960px;
+    margin: 0 auto;
+
+    &.loading :is(.finance-movements-list, .finance-movements-chart) {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    & .finance-movements-header {
+        flex-wrap: wrap;
+        align-items: center;
+
+        & h1 {
+            flex: 1;
+        }
+    }
+
+    & select,
+    & input[type="month"] {
+        padding: 0.5em 1em;
+        border-radius: var(--border-radius);
+        color: var(--text-0);
+        background-color: var(--container-0);
+        border: 2px solid var(--container-3);
+    }
+
+    & .finance-movements-jump,
+    & .finance-filter {
+        align-items: center;
+    }
+
+    & .finance-movements-note {
+        color: var(--text-2);
+        font-size: 0.9rem;
+    }
+
+    & .finance-movements-chart {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap);
+        padding: var(--gap);
+        border-radius: var(--border-radius);
+        border: 2px solid var(--container-2);
+    }
+
+    & .finance-movements-chart-header {
+        flex-wrap: wrap;
+        align-items: center;
+
+        & h2 {
+            margin: 0;
+        }
+
+        & h2:first-child {
+            flex: 1;
+        }
+    }
+
+    & .finance-legend {
+        gap: var(--gap);
+        font-size: 0.9rem;
+    }
+
+    & .finance-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+
+        & .swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        &.income .swatch {
+            background-color: var(--finance-positive);
+        }
+
+        &.expense .swatch {
+            background-color: var(--finance-negative);
+        }
+    }
+
+    /* Bar chart of the last months */
+    & .finance-bars {
+        position: relative;
+        padding-top: 1.2rem;
+        border-top: 1px dashed var(--container-3);
+    }
+
+    & .finance-bars-scale {
+        position: absolute;
+        top: 2px;
+        left: 0;
+        font-size: 0.75rem;
+        color: var(--text-2);
+    }
+
+    & .finance-bars-months {
+        display: grid;
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
+        gap: 4px;
+    }
+
+    & .finance-bars-month {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        min-width: 0;
+        padding: 4px 0;
+        border: none;
+        border-radius: var(--border-radius);
+        background: transparent;
+        color: var(--text-1);
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            background-color: var(--container-1);
+        }
+    }
+
+    & .finance-bars-pair {
+        width: 100%;
+        height: var(--finance-bars-height);
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 2px;
+        border-bottom: 1px solid var(--container-3);
+    }
+
+    & .finance-bar {
+        width: min(14px, 35%);
+        border-radius: 4px 4px 0 0;
+
+        &.income {
+            background-color: var(--finance-positive);
+        }
+
+        &.expense {
+            background-color: var(--finance-negative);
+        }
+    }
+
+    & .finance-bars-label {
+        font-size: 0.8rem;
+    }
+
+    & .finance-bars-year {
+        font-size: 0.7rem;
+        color: var(--text-2);
+    }
+
+    /* Detail of a month */
+    & .finance-month-totals {
+        flex-wrap: wrap;
+        gap: var(--gap);
+    }
+
+    & .finance-month-total {
+        display: flex;
+        flex-direction: column;
+        min-width: 120px;
+        padding: 8px 12px;
+        border-radius: var(--border-radius);
+        background-color: var(--container-1);
+
+        & .label {
+            font-size: 0.8rem;
+            color: var(--text-2);
+        }
+
+        & .value {
+            font-weight: 700;
+        }
+
+        &.income .value,
+        &.positive .value {
+            color: var(--finance-positive);
+        }
+
+        &.expense .value,
+        &.negative .value {
+            color: var(--finance-negative);
+        }
+
+        &.investment .value {
+            color: var(--finance-investment);
+        }
+    }
+
+    & .finance-pie {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: calc(2 * var(--gap));
+    }
+
+    & .finance-pie-chart {
+        width: 220px;
+        aspect-ratio: 1 / 1;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+
+        & > * {
+            grid-area: 1 / 1;
+        }
+
+        & .finance-ring {
+            width: 100%;
+            height: 100%;
+        }
+
+        & .center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 70%;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        & .total {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        & .label {
+            font-size: 0.8rem;
+            color: var(--text-2);
+        }
+    }
+
+    & .finance-pie-legend {
+        flex: 1;
+        min-width: 240px;
+        gap: 4px;
+    }
+
+    & .finance-pie-legend-item {
+        --finance-badge-size: 24px;
+
+        display: grid;
+        grid-template-columns: var(--finance-badge-size) 1fr auto 4.5em;
+        align-items: center;
+        gap: var(--gap-smaller);
+        padding: 4px 8px;
+        border: 2px solid transparent;
+        border-radius: var(--border-radius);
+        background-color: transparent;
+        color: var(--text-0);
+        text-align: left;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            background-color: var(--container-1);
+        }
+
+        &.selected {
+            border-color: var(--accent-3);
+        }
+
+        &.dimmed {
+            opacity: 0.55;
+        }
+
+        & .finance-badge {
+            font-size: 12px;
+        }
+
+        & .name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        & .value {
+            font-weight: 600;
+        }
+
+        & .share {
+            text-align: right;
+            color: var(--text-2);
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Filters and the listing */
+    & .finance-movements-filters {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--gap);
+        scroll-margin-top: var(--gap);
+    }
+
+    & .finance-type-filters {
+        gap: 0;
+        border-radius: var(--border-radius);
+        border: 2px solid var(--container-3);
+        overflow: hidden;
+    }
+
+    & .finance-type-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: none;
+        border-radius: 0;
+        background-color: var(--container-0);
+        color: var(--text-1);
+
+        &.selected {
+            background-color: var(--container-3);
+            color: var(--text-0);
+            font-weight: 600;
+        }
+    }
+
+    & .finance-movements-count {
+        margin-left: auto;
+        color: var(--text-2);
+        font-size: 0.9rem;
+    }
+
+    & .finance-movements-list {
+        gap: 4px;
+    }
+
+    & .finance-movements-pagination {
+        justify-content: center;
+
+        &:empty {
+            display: none;
+        }
+
+        flex-wrap: wrap;
+        gap: 4px;
+
+        & a,
+        & span {
+            min-width: 2.2em;
+            padding: 4px 8px;
+            text-align: center;
+            border-radius: var(--border-radius);
+        }
+
+        & a:hover {
+            background-color: var(--container-1);
+        }
+
+        & .current {
+            background-color: var(--container-3);
+            font-weight: 600;
+        }
+
+        & .gap,
+        & .disabled {
+            color: var(--text-2);
+        }
+    }
+}

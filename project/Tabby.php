@@ -32,6 +32,15 @@ class Tabby {
 
                 // FinanceApi in widgets/finance/finance.d.ts, routes in bootstrap.php
                 'finance' => [
+                    'page' => $request->getDomain()
+                        ->createUrl(Path::from('/finance'))
+                        ->toString(),
+                    'movements' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/movements'))
+                        ->toString(),
+                    'months' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/months'))
+                        ->toString(),
                     'health' => $request->getDomain()
                         ->createUrl(Path::from('/finance/health'))
                         ->toString(),
@@ -43,6 +52,18 @@ class Tabby {
                         ->toString(),
                     'summary' => $request->getDomain()
                         ->createUrl(Path::from('/finance/summary'))
+                        ->toString(),
+                    'invest' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/invest'))
+                        ->toString(),
+                    'funds' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/funds'))
+                        ->toString(),
+                    'investments' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/investments'))
+                        ->toString(),
+                    'quotes' => $request->getDomain()
+                        ->createUrl(Path::from('/finance/quotes'))
                         ->toString(),
                 ],
 

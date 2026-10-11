@@ -1,0 +1,40 @@
+<?php /** @var FinanceMovementsPage $this */
+
+use components\Icon;
+use core\sideloader\importers\Css\Css;
+use core\sideloader\importers\Javascript\Javascript;
+use core\view\Html;
+use project\components\Finance\FinanceMovementsPage;
+use project\components\Frame;
+
+// inspector components and the color picker of the dialogs, then the code shared with the widget
+Frame::importAssets();
+Css::import($this->getResource('../../widgets/finance/finance.css'));
+Javascript::import($this->getResource('../../widgets/finance/finance-core.js'));
+
+Css::importDefault($this);
+Javascript::importDefault($this);
+
+?><main class="finance-movements page-section column" x-init="finance_movementsPage">
+    <header class="finance-movements-header row">
+        <a class="button" href="<?= Html::escapeAttribute($this->getDashboardUrl()) ?>">
+            <?= Icon::nf('nf-fa-arrow_left', '<') ?>
+            <?= Html::escape($this->tr('Dashboard')) ?>
+        </a>
+
+        <h1><?= Html::escape($this->tr('Money movements')) ?></h1>
+
+        <label class="finance-movements-jump row">
+            <span><?= Html::escape($this->tr('Jump to month')) ?></span>
+            <input type="month" required>
+        </label>
+    </header>
+
+    <section class="finance-movements-chart"></section>
+
+    <div class="finance-movements-filters row"></div>
+
+    <div class="finance-movements-list column"></div>
+
+    <nav class="finance-movements-pagination row"></nav>
+</main>
