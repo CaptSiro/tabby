@@ -1,17 +1,16 @@
 /**
- * @param {MaybeReactive<boolean>} state
- * @param {Setter<boolean>} setter
+ * @param {Signal<boolean>} state
  * @param {JsmlContent} label
  * @returns {HTMLElement}
  */
-function TabbyCheckbox({ checked, setChecked, label = "" }) {
+function TabbyCheckbox({ state, label = "" }) {
+    const [checked, setChecked] = state;
+    
     const checkbox = CheckBox({
-        checked: state,
+        checked,
         label,
-        onChange: async event => {
-            if (!(await setter(event.target.checked, checkbox))) {
-                event.target.checked = !event.target.checked;
-            }
+        onChange: event => {
+            event.target.checked = setChecked(event.target.checked);
         }
     });
     
@@ -19,38 +18,35 @@ function TabbyCheckbox({ checked, setChecked, label = "" }) {
     return checkbox;
 }
 
+function choose(event, setValue, collection) {
+    const value = setValue(event.target.value);
+    if (collection.length === 0) {
+        return;
+    }
+    
+    for (const element of collection) {
+        if (element.value !== value) {
+            element["checked"] = false;
+            continue;
+        }
+        
+        element["checked"] = true;
+    }
+    
+    return value;
+}
+
 /**
- * @typedef KeyValuePair
- * @property {string} text
- * @property {string} value
- * @property {boolean=} selected
- */
-/**
- * @param {Setter<string>} setter
+ * @param {Writter<string>} setValue
  * @param {KeyValuePair[]} radios
  * @param {string} label
  * @returns {HTMLElement}
  */
-function RadioGroupInspector(setter, radios, label = undefined) {
+function TabbyRadioGroup({ radios, setValue, label = undefined }) {
     const name = std_id_html(8);
-    let lastValue = radios
-        .reduce(
-            (last, current) => current.selected ? current.value : last,
-            undefined
-        );
-    
-    const onChange = async event => {
-        lastValue = await choiceChangeListener(
-            event,
-            setter,
-            lastValue,
-            radioGroup,
-            radioGroup.querySelectorAll(`input[name=${name}]`)
-        );
-    };
     
     const radioGroup = html.element`
-        <div class="i-radio-group" onChange="${onChange}">
+        <div class="i-radio-group" onChange="${event => choose(event, setValue, radioGroup.querySelectorAll(`input[name=${name}]`))}">
             <${Show} when="${is(label)}">
                 <span>${label}</span>
             </>
@@ -67,179 +63,113 @@ function RadioGroupInspector(setter, radios, label = undefined) {
 }
 
 /**
- * @param {string | undefined} state
- * @param {Setter<string>} setter
- * @param {string} label
- * @param {string} placeholder
- * @param {Props} props
+ * @param {JsmlTagProps<"textarea"> & { value: Signal<string>, label: string }} props
  * @returns {HTMLElement}
  */
-function TextAreaInspector(state, setter, label = undefined, placeholder = undefined, props = {}) {
-    const container = div("i-text-area");
+function TabbyTextArea(props) {
+    const { value: [text, setText], label = undefined, ...p } = props;
     
-    props.onBlur ??= async event => {
-        if (state === event.target.value) {
-            return;
-        }
-        
-        if (await setter(event.target.value, container)) {
-            state = event.target.value;
-            return;
-        }
-        
-        event.target.value = state ?? "";
-    };
-    
-    props.onKeydown ??= event => {
-        if (!(event.key === "Enter" && event.ctrlKey)) {
-            return;
-        }
-        
-        event.target.dispatchEvent(new Event("blur"));
-    }
-    
-    if (is(state)) {
-        props.value = state;
-    }
-    
-    if (is(placeholder)) {
-        props.placeholder = placeholder;
-    }
-    
-    const area = jsml.textarea(props, state);
-    const labelElement = Label({ label, target: area });
-    
-    if (placeholder) {
-        area.setAttribute("placeholder", placeholder);
-    }
-    
-    container.append(
-        labelElement,
-        area
-    );
-    
-    return container;
+    const area = html.element(html`
+        <textarea
+            value="${text}"
+            onBlur="${event => setText(event.target.value)}"
+            onKeydown="${event => {
+                if (!(event.key === "Enter" && event.ctrlKey)) {
+                    return;
+                }
+                
+                event.target.dispatchEvent(new Event("blur"));
+            }}"
+            ...${p}
+        ></textarea>
+    `);
+
+    return html.element(html`
+        <div class="i-text-area">
+            <${Label} label="${label}" target="${area}" />
+            ${area}
+        </div>
+    `);
 }
 
 /**
- * @param {string | undefined} state
- * @param {Setter<string>} setter
- * @param {string} label
- * @param {string} placeholder
- * @param {Props} props
+ * @param {JsmlTagProps<"input"> & { value: Signal<string>, label: string }} props
  * @returns {HTMLElement}
  */
-function TextFieldInspector(state, setter, label = undefined, placeholder = undefined, props = {}) {
-    const container = div("i-text-field");
+function TabbyTextField(props) {
+    const { value: [text, setText], label = undefined, ...p } = props;
     
-    props.onBlur ??= async event => {
-        if (state === event.target.value) {
-            return;
-        }
-        
-        if (await setter(event.target.value, container)) {
-            state = event.target.value;
-            return;
-        }
-        
-        event.target.value = state ?? "";
-    };
+    const textField = html.element(html`
+        <input
+            type="text"
+            value="${text}"
+            onBlur="${event => setText(event.target.value)}"
+            onKeydown="${event => {
+                if (event.key !== "Enter") return;
+                event.target.dispatchEvent(new Event("blur"));
+            }}"
+            ...${p}
+        >
+    `);
     
-    props.onKeydown ??= event => {
-        if (event.key !== "Enter") return;
-        event.target.dispatchEvent(new Event("blur"));
-    };
-    
-    if (is(state)) {
-        props.value = state;
-    }
-    
-    if (is(placeholder)) {
-        props.placeholder = placeholder;
-    }
-    
-    props.type = "text";
-    const textField = jsml.input(props);
-    const labelElement = Label({ label, target: textField });
-    
-    container.append(
-        labelElement,
-        textField
-    );
-    
-    return container;
+    return html.element(html`
+        <div class="i-text-field">
+            <${Label} label="${label}" target="${textField}" />
+            ${input}
+        </div>
+    `);
 }
 
 /**
- * @param {number | undefined} state
- * @param {Setter<string | number>} setter
- * @param {string} label
- * @param {string} placeholder
- * @param {Content} measurement
- * @param {Props} props
+ * @param {JsmlTagProps<"input"> & { value: Signal<number>, label: string, measurement?: string }} props
  * @returns {HTMLElement}
  */
-function NumberInspector(state, setter, label = undefined, placeholder = undefined, measurement = undefined, props = {}) {
+function TabbyNumber(props) {
+    const { value: [value, setValue], label = undefined, measurement = undefined, ...p } = props;
     const id = std_id_html(8);
-    props.id = id;
     
-    if (is(placeholder)) {
-        props.placeholder = placeholder;
-    }
-    
-    if (is(placeholder)) {
-        props.placeholder = placeholder;
-    }
-    
-    if (is(state)) {
-        props.value = state;
-    }
-    
-    props.type = "number";
-    
-    return (
-        div("i-number", [
-            Optional(is(label), jsml.label({ for: id }, label)),
-            jsml.input(props),
-            typeof measurement === "string"
-                ? span(_, measurement)
-                : measurement
-        ])
-    );
+    return html.element(html`
+        <div class="i-number">
+            <${Show} when="${is(label)}">
+                <label for="${id}">
+                    ${label}
+                </label>
+            </>
+            
+            <input
+                id="${id}"
+                type="number"
+                value="${value}"
+                onChange="${event => setValue(Number(event.target.value))}"
+                ...${p}
+            >
+            
+            <${Show} when="${is(measurement)}">
+                <span>${measurement}</span>
+            </>
+        </div>
+    `);
 }
 
-//TODO: create custom date picker
 /**
- * @param {Date | undefined} state
- * @param {Setter<Date>} setter
- * @param {string} label
- * @param {boolean} isDateTime
- * @param {Props} props
+ * @param {JsmlTagProps<"input"> & { value: Signal<Date>, label: string, isDateTime: boolean }} props
  * @returns {HTMLElement}
  */
-function DateInspector(state, setter, label = undefined, isDateTime = false, props = {}) {
-    const input = jsml.input({
-        type: isDateTime ? "datetime-local" : "date"
-    });
-    input.addEventListener("change", async () => {
-        const date = new Date(input.value);
-        if (state === date) {
-            return;
-        }
-        
-        if (await setter(date, input.parentElement)) {
-            state = date;
-            return;
-        }
-        
-        input.value = state?.toISOString().slice(0, 16);
-    });
+function TabbyDate(props) {
+    const { value: [date, setDate], label = undefined, isDateTime = false, ...p } = props;
     
-    if (is(state)) {
+    const input = html.element(html`
+        <input
+            type="${isDateTime ? 'datetime-local' : 'date'}"
+            onChange="${event => setDate(new Date(event.target.value))}"
+        >
+    `);
+    
+    effect(() => {
         const timezoneOffset = new Date().getTimezoneOffset() * 60 * 1000;
-        const localDateTime = new Date(state.getTime() - timezoneOffset);
+        const localDateTime = new Date(date().getTime() - timezoneOffset);
         input.value = localDateTime.toISOString().slice(0, 16);
-    }
+    });
     
     return (
         LabelAndComponentInspector("i-date", label, input)
@@ -247,76 +177,65 @@ function DateInspector(state, setter, label = undefined, isDateTime = false, pro
 }
 
 /**
- * @param {Setter<string>} setter
- * @param {KeyValuePair[]} options
- * @param {string} label
- * @param {string} className
+ * @param {{ options: KeyValuePair[], setValue: Writter<string>, label: string, containerClass?: string }} props
  * @returns {HTMLElement}
  */
-function SelectInspector(setter, options, label = undefined, className = undefined) {
+function TabbySelect(props) {
+    const { options, setValue, label = undefined, containerClass = undefined, ...p } = props;
     const id = std_id_html(8);
-    let lastValue = options
-        .reduce(
-            (last, current) => current.selected ? current.value : last,
-            undefined
-        );
     
-    const container = div("i-select dont-force" + (className !== undefined ? (" " + className) : ""));
-    const select = (
-        jsml.select(
-            {
-                onChange: async event => {
-                    lastValue = await choiceChangeListener(event, setter, lastValue, container, select.children);
-                }
-            },
-            options.map(option =>
-                new Option(option.text, option.value, _, option?.selected)
-            ),
-        )
-    );
-    
-    jsml_addContent(container, [
-        Optional(is(label), jsml.label({ for: id }, label)),
-        div("select-container", select)
-    ]);
-    
-    return container;
+    const select = html.element(html`
+        <select
+            onChange="${event => choose(event, setValue, select.children)}"
+        >
+            <${For} each="${options}">
+                ${x => html`
+                    <option value="${x.value}" selected="${x.selected}">
+                        ${x.text}
+                    </option>
+                `}
+            </>
+        </select>
+    `);
+
+    return html.element(html`
+        <div class="${['i-select dont-force', containerClass]}">
+            <${Show} when="${is(label)}">
+                <label for="${id}">
+                    ${label}
+                </label>
+            </>
+            
+            <div class="select-container">
+                ${select}
+            </div>
+        </div>
+    `);
 }
 
 /**
- * @param {string | undefined} state
- * @param {Setter<string>} setter
- * @param {string} label
- * @param {string} placeholder
- * @param {Props} props
+ * @param {JsmlTagProps<"input"> & { value: Signal<string>, label: string }} props
  * @returns {HTMLElement}
  */
-function ColorPickerInspector(state, setter, label = undefined, placeholder = undefined, props = {}) {
-    if (is(state)) {
-        props.value = state;
-    }
+function TabbyColorPicker(props) {
+    const { value: [color, setColor], label = undefined, placeholder = undefined, ...p } = props;
     
-    props.type = "color";
-    const input = jsml.input(props);
-    const container = LabelAndComponentInspector("i-date", label, input, placeholder);
+    const input = html.element(html`
+        <input
+            type="color"
+            value="${color}"
+            onChange="${event => setColor(event.target.value)}"
+        >
+    `);
     
-    input.addEventListener("change", async event => {
-        if (state === event.target.value) {
-            return;
-        }
-        
-        await setter(event.target.value, container);
-    });
-    
-    return container;
+    return LabelAndComponentInspector("i-date", label, input, placeholder);
 }
 
 /**
- * @param {string} title
- * @param {string} className
+ * @param {} props
  * @returns {HTMLElement}
  */
-function TitleInspector(title, className = undefined) {
+function TitleInspector(props) {
     return (
         h3("i-title" + (className !== undefined ? " " + className : ""), title)
     );
