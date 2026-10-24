@@ -178,16 +178,25 @@ function tabby_defaultInspect() {
         
         const { backgrounds, admin } = api;
         
-        return (
-            div("column", [
-                Link(admin?.url, admin.label, { target: "_blank" }),
-                Link(backgrounds?.listing, 'Manage background sets'),
-            ])
-        )
+        return html`
+            <div class="column">
+                <${Link} href="${admin?.url}" target="_blank">
+                    ${admin.label}
+                </>
+            
+                <${Link} href="${backgrounds?.listing}">
+                    Manage background sets
+                </>
+            </div>
+        `;
     }
 
     // shown only when the background is chosen randomly
-    const setContainer = jsml.div(cls(_, { hide: !isRandom }), Async(tabby_BackgroundSetInspector));
+    const setContainer = html.element(html`
+        <div class="${{ hide: !isRandom }}">
+            ${Async(tabby_BackgroundSetInspector)}
+        </div>
+    `);
 
     return [
         TitleInspector('Tabby'),
@@ -530,6 +539,7 @@ function tabby_placeAxis(element, anchor, offset, startProperty, endProperty) {
  * @param {TabbyAnchor | undefined} anchorX
  * @param {TabbyAnchor | undefined} anchorY
  * @param {string | undefined} positionUnit missing in configs that store the offsets as fractions of the container
+ * @returns {HTMLDivElement}
  */
 function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY, positionUnit } = {}) {
     // pointer is down, but the widget is not dragged until it moves past TABBY_DRAG_THRESHOLD
@@ -641,16 +651,13 @@ function tabby_WidgetElement(context, content, { x, y, anchorX, anchorY, positio
  * @param {HTMLElement} icon
  * @param {string} name
  */
-function tabby_PrefabElement(builder, icon, name) {
-    return jsml.div({
-        class: "row prefab",
-        onClick: () => {
-            tabby_addWidget(builder.create());
-        }
-    }, [
-        icon,
-        jsml.span(_, name)
-    ]);
+function tabby_PrefabElement({ builder, icon, name }) {
+    return html`
+        <div class="row prefab" onClick="${() => tabby_addWidget(builder.create())}">
+            ${icon}
+            <span>${name}</span>
+        </div>
+    `;
 }
 
 /**

@@ -312,7 +312,7 @@ class CalendarWidget extends TabbyWidget {
                     class: "add",
                     title: "Add Event",
                     onClick: () => this.addEvent()
-                }, Icon("nf-md-calendar_plus", "+"))
+                }, nf("nf-md-calendar_plus", "+"))
             ]),
             this.#listing
         ]);
@@ -826,13 +826,13 @@ function calendar_openEventDialog(props) {
                             saved = true;
                             window_close(w);
                         }
-                    }, [Icon("nf-oct-trash"), " Delete"])),
+                    }, [nf("nf-oct-trash"), " Delete"])),
 
                     button({
                         type: "button",
                         class: "submit",
                         onClick: () => trySubmit()
-                    }, [Icon("nf-fa-check", "✓"), is(event) ? " Save" : " Add"]),
+                    }, [nf("nf-fa-check", "✓"), is(event) ? " Save" : " Add"]),
                 ])
             ]),
             CALENDAR_DIALOG_SETTINGS
@@ -855,5 +855,9 @@ const calendar_builder = new FunctionalTabbyBuilder(
 
 tabby_addBuilder(calendar_builder);
 tabby_addPrefab(
-    tabby_PrefabElement(calendar_builder, Icon('nf-md-calendar_check'), "Calendar")
+    tabby_PrefabElement({
+        builder: calendar_builder,
+        icon: nf('nf-md-calendar_check'),
+        time: "Calendar"
+    })
 );

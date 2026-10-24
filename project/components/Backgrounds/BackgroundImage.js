@@ -221,7 +221,7 @@ function backgrounds_image(element, { state }) {
                     title: "Remove from set " + set.name,
                     "aria-label": "Remove from set " + set.name,
                     onClick: () => remove(set)
-                }, Icon("nf-fa-close", "✕"))
+                }, nf("nf-fa-close", "✕"))
             ]));
         }
     };

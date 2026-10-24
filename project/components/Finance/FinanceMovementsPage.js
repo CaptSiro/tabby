@@ -395,20 +395,20 @@ class FinanceMovementsPage {
         jsml_addContent(this.#chart, [
             div("finance-movements-chart-header row", [
                 button({ type: "button", onClick: () => this.navigate({ month: undefined }) }, [
-                    Icon("nf-fa-arrow_left", "<"),
+                    nf("nf-fa-arrow_left", "<"),
                     " Back to year"
                 ]),
                 button({
                     type: "button",
                     title: "Previous month",
                     onClick: () => this.navigate({ month: finance_shiftMonth(month, -1) })
-                }, Icon("nf-fa-chevron_left", "‹")),
+                }, nf("nf-fa-chevron_left", "‹")),
                 h2(_, finance_formatMonth(month)),
                 button({
                     type: "button",
                     title: "Next month",
                     onClick: () => this.navigate({ month: finance_shiftMonth(month, 1) })
-                }, Icon("nf-fa-chevron_right", "›")),
+                }, nf("nf-fa-chevron_right", "›")),
             ]),
 
             div("finance-month-totals row", [
@@ -449,7 +449,7 @@ class FinanceMovementsPage {
             type: "button",
             onClick: () => this.navigate({ type: of, category: undefined })
         }, [
-            is(of) ? Icon(FINANCE_TYPES[of].icon, "") : undefined,
+            is(of) ? nf(FINANCE_TYPES[of].icon, "") : undefined,
             is(of) ? FINANCE_TYPES[of].plural : "All",
         ]));
 
@@ -555,12 +555,12 @@ class FinanceMovementsPage {
 
         jsml_addContent(this.#pagination, [
             current > 1
-                ? Link(current - 1, Icon("nf-fa-chevron_left", "‹"), "Previous page")
-                : span("disabled", Icon("nf-fa-chevron_left", "‹")),
+                ? Link(current - 1, nf("nf-fa-chevron_left", "‹"), "Previous page")
+                : span("disabled", nf("nf-fa-chevron_left", "‹")),
             ...items,
             current < pages
-                ? Link(current + 1, Icon("nf-fa-chevron_right", "›"), "Next page")
-                : span("disabled", Icon("nf-fa-chevron_right", "›")),
+                ? Link(current + 1, nf("nf-fa-chevron_right", "›"), "Next page")
+                : span("disabled", nf("nf-fa-chevron_right", "›")),
         ]);
     }
 }

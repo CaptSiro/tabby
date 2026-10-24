@@ -187,5 +187,9 @@ const time_builder = new FunctionalTabbyBuilder(
 
 tabby_addBuilder(time_builder);
 tabby_addPrefab(
-    tabby_PrefabElement(time_builder, Icon("nf-fa-clock"), "Time")
+    tabby_PrefabElement({
+        builder: time_builder,
+        icon: nf("nf-fa-clock"),
+        name: "Time"
+    })
 );

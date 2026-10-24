@@ -376,7 +376,7 @@ function finance_CategoryBadge(category) {
         },
         category?.icon.length === 1
             ? span(_, category.icon)
-            : Icon(category?.icon || "nf-fa-question", "?")
+            : nf(category?.icon || "nf-fa-question", "?")
     );
 }
 
@@ -728,7 +728,7 @@ function finance_openMovementDialog(props) {
                 tabindex: "-1",
                 title: FINANCE_TYPES[type][is(movement) ? 'edit' : 'add'],
                 onClick: () => trySubmit()
-            }, Icon("nf-fa-check", "✓"))
+            }, nf("nf-fa-check", "✓"))
         ]);
 
         // keep the focus (and the caret) in the amount input while clicking the keypad
@@ -809,7 +809,7 @@ function finance_openMovementDialog(props) {
 
                             window_close(w);
                         },
-                    }, [Icon('nf-fa-plus'), ' Add']))
+                    }, [nf('nf-fa-plus'), ' Add']))
                 ]),
                 div(_, [
                     LabelAndComponentInspector("field", "Date", dateInput),
@@ -837,7 +837,7 @@ function finance_openMovementDialog(props) {
                         }
                     }
                 }, [
-                    Icon('nf-oct-trash'),
+                    nf('nf-oct-trash'),
                     ' Delete'
                 ])))
             ]),

@@ -182,7 +182,7 @@ class FinanceWidget extends TabbyWidget {
         this.#recent = div("recent");
         // href is set when rendered, it depends on the preferred currency
         this.#allMovements = jsml.a({ class: "button all-movements", hidden: true }, [
-            Icon("nf-fa-list", "≡"),
+            nf("nf-fa-list", "≡"),
             span(_, "All movements")
         ]);
         this.#flow = div("flow");
@@ -199,7 +199,7 @@ class FinanceWidget extends TabbyWidget {
                         class: "add " + type,
                         onClick: () => this.addTransaction(type)
                     }, [
-                        Icon(FINANCE_TYPES[type].icon, "+"),
+                        nf(FINANCE_TYPES[type].icon, "+"),
                         span(_, FINANCE_TYPES[type].add)
                     ])
                 )),
@@ -403,7 +403,7 @@ class FinanceWidget extends TabbyWidget {
         const isSet = is(state.balance);
 
         jsml_addContent(this.#investBar, [
-            Icon("nf-md-bank", "B"),
+            nf("nf-md-bank", "B"),
             span("label", "Balance"),
             span(
                 cls("value", { negative: isSet && state.balance < 0, unset: !isSet }),
@@ -415,7 +415,7 @@ class FinanceWidget extends TabbyWidget {
                 class: cls("invest-button", { due: isDue }),
                 title: "Investing plan",
                 onClick: () => this.openInvest()
-            }, Icon("nf-md-chart_line", "I"))
+            }, nf("nf-md-chart_line", "I"))
         ]);
     }
 
@@ -501,7 +501,7 @@ class FinanceWidget extends TabbyWidget {
         for (const [type, value] of [[FINANCE_TYPE_INCOME, income], [FINANCE_TYPE_EXPENSE, expenses]]) {
             this.#flow.append(
                 div("flow-row " + type, [
-                    Icon(FINANCE_TYPES[type].icon, type === FINANCE_TYPE_INCOME ? "+" : "-"),
+                    nf(FINANCE_TYPES[type].icon, type === FINANCE_TYPE_INCOME ? "+" : "-"),
                     div("bar", div({
                         class: "fill",
                         style: {
@@ -644,7 +644,7 @@ class FinanceWidget extends TabbyWidget {
             }, [
                 finance_CategoryBadge(category),
                 jsml.span("name", category.name),
-                jsml.span("type finance-badge " + category.type, Icon(
+                jsml.span("type finance-badge " + category.type, nf(
                     category.type === 'income'
                         ? 'nf-md-trending_up'
                         : 'nf-md-trending_down'
@@ -1279,7 +1279,7 @@ function finance_openInvestDialog(financeWidget, state) {
                         await financeWidget.openInvest();
                     }
                 }
-            }, Icon("nf-oct-trash", "x"))
+            }, nf("nf-oct-trash", "x"))
         ]));
 
         const sourceName = finance_formatMonth(state.sourceMonth);
@@ -1313,7 +1313,7 @@ function finance_openInvestDialog(financeWidget, state) {
                 LabelAndComponentInspector("field", "Date", dateInput),
 
                 div("controls", [
-                    button({ class: "primary", onClick: () => record() }, [Icon("nf-fa-check", "✓"), " Record investments"]),
+                    button({ class: "primary", onClick: () => record() }, [nf("nf-fa-check", "✓"), " Record investments"]),
                     button({ onClick: () => window_close(w) }, "Later"),
                 ]),
 
@@ -1391,5 +1391,9 @@ const finance_builder = new FunctionalTabbyBuilder(
 
 tabby_addBuilder(finance_builder);
 tabby_addPrefab(
-    tabby_PrefabElement(finance_builder, Icon('nf-fa-money_check_dollar'), "Finance")
+    tabby_PrefabElement({
+        builder: finance_builder,
+        icon: nf('nf-fa-money_check_dollar'),
+        time: "Finance"
+    })
 );

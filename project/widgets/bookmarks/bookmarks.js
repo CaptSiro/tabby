@@ -31,20 +31,21 @@ class BookmarksWidget extends TabbyWidget {
         }
 
         for (const item of this.#config.items) {
+            const content = item.isTitleIcon
+                ? nf(item.title)
+                : html`<span>${item.title}</span>`;
+            
             this.#display.append(
-                jsml.a(
-                    {
-                        class: cls("bookmark center", { icon: item.isTitleIcon }),
-                        href: item.link,
-                        target: "_top",
-                        style: {
-                            backgroundColor: item.color
-                        }
-                    },
-                    item.isTitleIcon
-                        ? Icon(item.title)
-                        : jsml.span(_, item.title)
-                )
+                html.node(html`
+                    <${Link}
+                        href="${item.link}"
+                        class="${cls("bookmark center", { icon: item.isTitleIcon })}"
+                        target="_top"
+                        style="${{ backgroundColor: item.color }}"
+                    >
+                        ${content}
+                    </>
+                `),
             );
         }
     }
@@ -84,6 +85,11 @@ class BookmarksWidget extends TabbyWidget {
 
             const w = window_create(
                 "Bookmark",
+                html`
+                    <${window_TextWindow}>
+                    
+                    </>
+                `,
                 jsml.div("text-window", [
                     CheckboxInspector(item?.isTitleIcon ?? false, value => {
                         result.isTitleIcon = value;
@@ -264,5 +270,9 @@ const bookmarks_builder = new FunctionalTabbyBuilder(
 
 tabby_addBuilder(bookmarks_builder);
 tabby_addPrefab(
-    tabby_PrefabElement(bookmarks_builder, Icon("nf-md-book"), "Bookmarks")
+    tabby_PrefabElement({
+        builder: bookmarks_builder,
+        icon: nf("nf-md-book"),
+        name: "Bookmarks"
+    })
 );
