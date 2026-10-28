@@ -280,42 +280,47 @@ class CalendarWidget extends TabbyWidget {
         this.#config = config;
         this.setConfig(config);
 
-        const { div, button, span, label, input } = jsml;
         const name = std_id_html(8);
 
-        this.#track = div("track", CALENDAR_CATEGORIES.map(category => {
+        // the categories never change, a plain map keeps the tabs out of any reactive owner
+        const tabs = CALENDAR_CATEGORIES.map(category => {
             const info = CALENDAR_CATEGORY_INFO[category];
-            const radio = input({
-                type: "radio",
-                name,
-                value: category,
-                onChange: () => this.select(category)
-            });
-            const count = span("count", "0");
-            const tab = label({ class: "tab " + category, title: info.name }, [
-                radio,
-                span("name", info.name),
-                count
-            ]);
+            const radio = /** @type {HTMLInputElement} */ (html.element(html`
+                <input type="radio" name="${name}" value="${category}" onChange="${() => this.select(category)}">
+            `));
+            const count = html.element(html`<span class="count">0</span>`);
+            const tab = html.element(html`
+                <label class="${['tab', category]}" title="${info.name}">
+                    ${radio}
+                    <span class="name">${info.name}</span>
+                    ${count}
+                </label>
+            `);
 
             this.#tabs.set(category, { tab, radio, count });
             return tab;
-        }));
+        });
 
-        this.#track.style.setProperty("--count", String(CALENDAR_CATEGORIES.length));
+        this.#track = html.element(html`
+            <div class="track" style="${{ '--count': String(CALENDAR_CATEGORIES.length) }}">
+                ${tabs}
+            </div>
+        `);
 
-        this.#listing = div("listing");
-        this.#display = div("w-calendar", [
-            div("tabs", [
-                this.#track,
-                button({
-                    class: "add",
-                    title: "Add Event",
-                    onClick: () => this.addEvent()
-                }, nf("nf-md-calendar_plus", "+"))
-            ]),
-            this.#listing
-        ]);
+        this.#listing = html.element(html`<div class="listing"></div>`);
+        this.#display = html.element(html`
+            <div class="w-calendar">
+                <div class="tabs">
+                    ${this.#track}
+
+                    <button class="add" title="Add Event" onClick="${() => this.addEvent()}">
+                        ${nf("nf-md-calendar_plus", "+")}
+                    </button>
+                </div>
+                
+                ${this.#listing}
+            </div>
+        `);
 
         // other tabs may have changed events
         document.addEventListener("visibilitychange", () => {
@@ -490,25 +495,25 @@ class CalendarWidget extends TabbyWidget {
     }
 
     renderListing() {
-        const { div, button } = jsml;
         this.#listing.textContent = "";
 
         if (this.#isAvailable === false) {
-            this.#listing.append(div({
-                class: "empty",
-                title: this.#unavailableReason
-            }, "API unavailable"));
+            this.#listing.append(html.node(html`
+                <div class="empty" title="${this.#unavailableReason}">API unavailable</div>
+            `));
             return;
         }
 
         if (this.#isAvailable !== true) {
-            this.#listing.append(div("empty", "Loading…"));
+            this.#listing.append(html.node(html`<div class="empty">Loading…</div>`));
             return;
         }
 
         const events = this.eventsOf(this.#category);
         if (events.length === 0) {
-            this.#listing.append(div("empty", CALENDAR_CATEGORY_INFO[this.#category].empty));
+            this.#listing.append(html.node(html`
+                <div class="empty">${CALENDAR_CATEGORY_INFO[this.#category].empty}</div>
+            `));
             return;
         }
 
@@ -522,17 +527,16 @@ class CalendarWidget extends TabbyWidget {
         }
 
         if (events.length > this.visibleCount) {
-            this.#listing.append(
-                button({
-                    class: "show-more",
-                    onClick: () => {
-                        this.#isExpanded = !this.#isExpanded;
-                        this.renderListing();
-                    }
-                }, isTruncated
-                    ? `Show more (${events.length - this.visibleCount})`
-                    : "Show less")
-            );
+            this.#listing.append(html.node(html`
+                <button class="show-more" onClick="${() => {
+                    this.#isExpanded = !this.#isExpanded;
+                    this.renderListing();
+                }}">
+                    ${isTruncated
+                        ? `Show more (${events.length - this.visibleCount})`
+                        : "Show less"}
+                </button>
+            `));
         }
     }
 
@@ -541,30 +545,29 @@ class CalendarWidget extends TabbyWidget {
      * @return {HTMLElement}
      */
     renderEvent(event) {
-        const { div, span, input } = jsml;
         const date = calendar_parse(event.datetime);
         const edit = () => this.editEvent(event);
-
-        return div(cls("event", { done: event.isDone }), [
-            input({
-                type: "checkbox",
-                checked: event.isDone,
-                title: event.isDone ? "Mark as not done" : "Mark as done",
-                onChange: e => this.setDone(event, e.target.checked)
-            }),
-            span({
-                class: "label",
-                title: event.label,
-                onClick: edit
-            }, event.label),
-            span({
-                class: "datetime",
-                title: calendar_formatFull(date, this.isMilitaryTime),
-                onClick: edit
-            }, this.#category === CALENDAR_TODAY
-                ? calendar_formatTime(date, this.isMilitaryTime)
-                : calendar_formatRelative(date))
-        ]);
+        
+        return html.element(html`
+            <div class="${cls("event", { done: event.isDone })}">
+                <input
+                    type="checkbox"
+                    checked="${event.isDone}"
+                    title="${event.isDone ? "Mark as not done" : "Mark as done"}"
+                    onChange="${e => this.setDone(event, e.target.checked)}"
+                >
+                
+                <span class="label" title="${event.label}" onClick="${edit}">
+                    ${event.label}
+                </span>
+                
+                <span class="datetime" onClick="${edit}" title="${calendar_formatFull(date, this.isMilitaryTime)}">
+                    ${this.#category === CALENDAR_TODAY
+                        ? calendar_formatTime(date, this.isMilitaryTime)
+                        : calendar_formatRelative(date)}
+                </span>
+            </div>
+        `);
     }
 
     instantiate() {
@@ -637,36 +640,48 @@ class CalendarWidget extends TabbyWidget {
     }
 
     inspect() {
-        return [
-            TitleInspector("Calendar"),
-
-            HRInspector(),
-
-            NumberInspector(this.visibleCount, () => true, "Visible events", String(CALENDAR_VISIBLE_COUNT), _, {
-                min: "1",
-                step: "1",
-                onChange: event => {
-                    const value = Number(event.target.value);
-                    if (event.target.value === "" || !Number.isInteger(value) || value < 1) {
-                        event.target.value = String(this.visibleCount);
-                        return;
-                    }
-
-                    this.#config.visibleCount = value;
-                    tabby_save();
-                    this.renderListing();
+        const visibleEvents = [
+            () => this.visibleCount,
+            x => {
+                const value = Number(x);
+                if (x === "" || !Number.isInteger(value) || value < 1) {
+                    return this.visibleCount;
                 }
-            }),
-
-            CheckboxInspector(this.isMilitaryTime, value => {
-                this.#config.isMilitaryTime = value;
+                
+                this.#config.visibleCount = value;
+                tabby_save();
+                this.renderListing();
+                return value;
+            }
+        ];
+        
+        const isMilitaryTime = [
+            () => this.isMilitaryTime,
+            x => {
+                this.#config.isMilitaryTime = x;
                 tabby_save();
                 this.render();
-                return true;
-            }, "24-hour time"),
-
-            Optional(this.#isAvailable === false, NoteInspector("Calendar API is not available: " + this.#unavailableReason)),
+                return x;
+            }
         ];
+        
+        return html`
+            <${TabbyTitle} title="Calendar" />
+            <${TabbyHR} />
+            
+            <${TabbyNumber}
+                value="${visibleEvents}"
+                label="Visible events"
+                placeholder="${CALENDAR_VISIBLE_COUNT}"
+                min="1"
+                step="1"
+            />
+            <${TabbyCheckbox} state="${isMilitaryTime}" label="24-hour time" />
+
+            <${Show} when="${this.#isAvailable === false}">
+                <${TabbyNote} note="Calendar API is not available: ${this.#unavailableReason}" />
+            </>
+        `;
     }
 
     save() {
@@ -692,8 +707,6 @@ class CalendarWidget extends TabbyWidget {
 function calendar_openEventDialog(props) {
     return new Promise(resolve => {
         const { event, isMilitaryTime, submit, remove } = props;
-        const { div, button, input } = jsml;
-
         let saved = false;
         let isSubmitting = false;
 
@@ -702,20 +715,26 @@ function calendar_openEventDialog(props) {
             ? calendar_parse(event.datetime)
             : new Date(new Date().setMinutes(60, 0, 0));
 
-        const labelInput = input({
-            type: "text",
-            value: event?.label ?? "",
-            placeholder: "Event",
-            onKeydown: e => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    trySubmit().then();
-                }
-            }
-        });
+        const labelInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input
+                type="text"
+                value="${event?.label ?? ""}"
+                placeholder="Event"
+                onKeydown="${e => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        trySubmit().then();
+                    }
+                }}"
+            >
+        `));
 
-        const dateInput = input({ type: "date", value: calendar_isoDate(initial) });
-        const timeInput = input({ type: "time", value: calendar_isoTime(initial) });
+        const dateInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input type="date" value="${calendar_isoDate(initial)}">
+        `));
+        const timeInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input type="time" value="${calendar_isoTime(initial)}">
+        `));
 
         /**
          * @param {Date} date
@@ -734,18 +753,39 @@ function calendar_openEventDialog(props) {
 
             setDate(calendar_addDays(current, days));
         };
-
-        const OffsetDateButton = offset => button(
-            { type: "button", onClick: () => offsetDate(offset) },
-            offset > 0
-                ? "+" + offset
-                : String(offset)
-        );
-
-        const QuickTimeButton = hours => button({
-            type: "button",
-            onClick: () => timeInput.value = calendar_pad(hours) + ":00"
-        }, calendar_formatTime(new Date(2000, 0, 1, hours), isMilitaryTime));
+        
+        /**
+         * @param {JsmlProps & { offset: number }} props
+         * @returns {HTMLElement}
+         */
+        const DateButton = props => {
+            const { offset, ...p } = props;
+            
+            return html.element(html`
+                <button
+                    type="button"
+                    onClick="${() => offsetDate(offset)}"
+                    ...${p}
+                >
+                    ${offset > 0
+                        ? "+" + offset
+                        : String(offset)}
+                </button>
+            `);
+        }
+        const QuickTimeButton = props => {
+            const { hours, ...p } = props;
+            
+            return html.element(html`
+                <button
+                    type="button"
+                    onClick="${() => timeInput.value = calendar_pad(hours) + ":00"}"
+                    ...${p}
+                >
+                    ${calendar_formatTime(new Date(2000, 0, 1, hours), isMilitaryTime)}
+                </button>
+            `);
+        }
 
         const trySubmit = async () => {
             if (isSubmitting) {
@@ -789,52 +829,75 @@ function calendar_openEventDialog(props) {
 
         const w = window_create(
             is(event) ? "Edit Event" : "Add Event",
-            div("calendar-dialog", [
-                LabelAndComponentInspector("field", "Label", labelInput),
+            () => html`
+                <div class="calendar-dialog">
+                    <${Labeled} label="Label" class="field">
+                        ${labelInput}
+                    </>
+                    
+                    <div>
+                        <${Labeled} label="Date" class="field">
+                            ${dateInput}
+                        </>
+                        
+                        <div class="quick">
+                            <${DateButton} offset="${-3}" />
+                            <${DateButton} offset="${-2}" />
+                            <${DateButton} offset="${-1}" />
+                            
+                            <button
+                                type="button"
+                                onClick="${() => setDate(new Date())}"
+                            >Now</button>
+                            
+                            <${DateButton} offset="${+1}" />
+                            <${DateButton} offset="${+2}" />
+                            <${DateButton} offset="${+3}" />
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <${Labeled} label="Time" class="field">
+                            ${timeInput}
+                        </>
+                        
+                        <div class="quick">
+                            ${CALENDAR_QUICK_HOURS.map(hours => html`<${QuickTimeButton} hours="${hours}" />`)}
+                        </div>
+                    </div>
+                    
+                    <div class="controls">
+                        <${Show} when="${is(event) && is(remove)}">
+                            <button
+                                type="button"
+                                class="delete"
+                                onClick="${async () => {
+                                    if (!(await window_confirm(`Do you want to delete event '${event.label}'?`, WINDOW_CONFIRM_SETTINGS))) {
+                                        return;
+                                    }
+                                    
+                                    if (!is(await remove(event))) {
+                                        return;
+                                    }
+                                    
+                                    saved = true;
+                                    window_close(w);
+                                }}"
+                            >
+                                <${Icon} nf="nf-oct-trash" />${" Delete"}
+                            </button>
+                        </>
 
-                div(_, [
-                    LabelAndComponentInspector("field", "Date", dateInput),
-                    div("quick", [
-                        OffsetDateButton(-3),
-                        OffsetDateButton(-2),
-                        OffsetDateButton(-1),
-                        button({ type: "button", onClick: () => setDate(new Date()) }, "Now"),
-                        OffsetDateButton(+1),
-                        OffsetDateButton(+2),
-                        OffsetDateButton(+3),
-                    ])
-                ]),
-
-                div(_, [
-                    LabelAndComponentInspector("field", "Time", timeInput),
-                    div("quick", CALENDAR_QUICK_HOURS.map(QuickTimeButton))
-                ]),
-
-                div("controls", [
-                    Optional(is(event) && is(remove), button({
-                        type: "button",
-                        class: "delete",
-                        onClick: async () => {
-                            if (!(await window_confirm(`Do you want to delete event '${event.label}'?`, WINDOW_CONFIRM_SETTINGS))) {
-                                return;
-                            }
-
-                            if (!is(await remove(event))) {
-                                return;
-                            }
-
-                            saved = true;
-                            window_close(w);
-                        }
-                    }, [nf("nf-oct-trash"), " Delete"])),
-
-                    button({
-                        type: "button",
-                        class: "submit",
-                        onClick: () => trySubmit()
-                    }, [nf("nf-fa-check", "✓"), is(event) ? " Save" : " Add"]),
-                ])
-            ]),
+                        <button
+                            type="button"
+                            class="submit"
+                            onClick="${() => trySubmit()}"
+                        >
+                            <${Icon} nf="nf-fa-check" fallback="✓"/>${is(event) ? " Save" : " Add"}
+                        </button>
+                    </div>
+                </div>
+            `,
             CALENDAR_DIALOG_SETTINGS
         );
 

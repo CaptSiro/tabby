@@ -62,7 +62,7 @@ function tabby_load() {
 window.addEventListener("load", async () => {
     tabby_load();
     await tabby_chooseRandomBackground();
-    tabby_inspect(tabby_defaultInspect());
+    tabby_inspect(tabby_defaultInspect);
 }, { once: true });
 
 function tabby_save() {
@@ -155,7 +155,8 @@ async function tabby_BackgroundSetInspector() {
         ...sets.map(x => ({ value: String(x.id), text: `${x.name} (${x.count})` }))
     ];
 
-    return SelectInspector(async value => {
+    // a builder, so the select is created in the inspector's root (see Async)
+    return () => SelectInspector(async value => {
         if (value === "") {
             localStorage.removeItem(TABBY_KEY_RANDOM_BACKGROUND_SET);
         } else {
@@ -265,7 +266,7 @@ tabby_content.addEventListener("pointerdown", event => {
     if (!is(widgetElement)) {
         tabby_currentWidget?.classList.remove("focus");
         tabby_currentWidget = null;
-        tabby_inspect(tabby_defaultInspect());
+        tabby_inspect(tabby_defaultInspect);
         return;
     }
 
@@ -282,7 +283,7 @@ tabby_content.addEventListener("pointerdown", event => {
         return;
     }
 
-    tabby_inspect(widget.inspect());
+    tabby_inspect(() => widget.inspect());
 });
 
 window.addEventListener("keydown", event => {
@@ -312,17 +313,34 @@ function tabby_addPrefab(element) {
     tabby_widgets_element.append(element);
 }
 
+/** @type {(() => void) | null} disposes the effects of the content currently in the inspector */
+let tabby_disposeInspector = null;
+
 /**
- * @param {Content} content
+ * The content is built inside a root that is disposed when the inspector is replaced, so effects bound to long-lived
+ * signals do not outlive their elements. Pass a builder, content built before the call would not be owned by the root.
+ *
+ * @param {() => Content} build
  */
-function tabby_inspect(content = undefined) {
+function tabby_inspect(build = undefined) {
+    tabby_disposeInspector?.();
+    tabby_disposeInspector = null;
     tabby_inspector.innerHTML = "";
 
-    if (!is(content) || (Array.isArray(content) && content.length === 0)) {
+    if (!is(build)) {
         return;
     }
 
-    jsml_addContent(tabby_inspector, content);
+    createRoot(dispose => {
+        tabby_disposeInspector = dispose;
+
+        const content = build();
+        if (!is(content) || (Array.isArray(content) && content.length === 0)) {
+            return;
+        }
+
+        jsml_addContent(tabby_inspector, content);
+    });
 }
 
 function tabby_updateLayout() {

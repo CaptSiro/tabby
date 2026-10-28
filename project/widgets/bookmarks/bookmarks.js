@@ -18,7 +18,7 @@ class BookmarksWidget extends TabbyWidget {
         this.#config = config;
         this.setConfig(config);
 
-        this.#display = jsml.div("w-bookmarks");
+        this.#display = html.element(html`<div class="w-bookmarks"></div>`);
     }
 
 
@@ -37,14 +37,14 @@ class BookmarksWidget extends TabbyWidget {
             
             this.#display.append(
                 html.node(html`
-                    <${Link}
+                    <a
                         href="${item.link}"
                         class="${cls("bookmark center", { icon: item.isTitleIcon })}"
                         target="_top"
                         style="${{ backgroundColor: item.color }}"
                     >
                         ${content}
-                    </>
+                    </a>
                 `),
             );
         }
@@ -82,52 +82,37 @@ class BookmarksWidget extends TabbyWidget {
             if (is(item)) {
                 colorPicker.setNewFromFormat(item.color);
             }
+            
+            const usePropTrimmed = (object, property) => {
+                const [get, set] = useProp(object, property);
+                return [get, x => set(x.trim())];
+            }
 
             const w = window_create(
                 "Bookmark",
-                html`
+                () => html`
                     <${window_TextWindow}>
-                    
-                    </>
-                `,
-                jsml.div("text-window", [
-                    CheckboxInspector(item?.isTitleIcon ?? false, value => {
-                        result.isTitleIcon = value;
-                        return true;
-                    }, "Is title icon"),
-
-                    TextFieldInspector(item?.title ?? "", value => {
-                        result.title = value.trim();
-                        return true;
-                    }, "Title"),
-
-                    TextFieldInspector(item?.link ?? "", value => {
-                        result.link = value.trim();
-                        return true;
-                    }, "Link"),
-
-                    colorPicker.rootElement,
-
-                    jsml.div("controls", [
-                        jsml.button({
-                            onClick: async () => {
+                        <${TabbyCheckbox} state="${useProp(result, 'isTitleIcon')}" label="Is title icon" />
+                        <${TabbyTextField} value="${usePropTrimmed(result, 'title')}" label="Title" />
+                        <${TabbyTextField} value="${usePropTrimmed(result, 'link')}" label="Link" />
+                        
+                        ${colorPicker.rootElement}
+                        
+                        <div class="controls">
+                            <button onClick="${async () => {
                                 if (result.link === "" || result.title === "") {
                                     await window_alert("Title and link must be set", WINDOW_ALERT_SETTINGS);
                                     return;
                                 }
-
+                                
                                 ret = result;
                                 window_close(w);
-                            }
-                        }, 'Ok'),
-
-                        jsml.button({
-                            onClick: () => {
-                                window_close(w);
-                            }
-                        }, 'Cancel'),
-                    ])
-                ]),
+                            }}">Ok</button>
+                            
+                            <button onClick="${() => window_close(w)}">Cancel</button>
+                        </div>
+                    </>
+                `,
                 {
                     isDialog: true,
                     isDraggable: true,
@@ -141,110 +126,73 @@ class BookmarksWidget extends TabbyWidget {
     }
 
     inspect() {
-        const items = jsml.div("bookmarks-listing");
-        let selected = undefined;
-        let selectedBookmark = undefined;
-        let selectedIndex = undefined;
+        this.#config.items ??= [];
 
-        const deselect = () => {
-            if (is(selected)) {
-                selected.classList.remove("selected");
+        const save = () => {
+            tabby_save();
+            this.renderItems();
+            tabby_inspect(() => this.inspect());
+        }
+
+        const onAdd = async () => {
+            const bookmark = await this.inspectItem();
+            if (!is(bookmark)) {
+                return;
+            }
+            
+            this.#config.items.push(bookmark);
+            save();
+        }
+        
+        /**
+         * @param {Event} event
+         * @param {Bookmark} selected
+         * @param {number} index
+         */
+        const onEdit = async (event, selected, index) => {
+            const bookmark = await this.inspectItem(selected);
+            if (!is(bookmark)) {
+                return;
             }
 
-            selected = undefined;
-            selectedBookmark = undefined;
-            selectedIndex = undefined;
+            this.#config.items[index] = bookmark;
+            save();
         }
 
-        this.#config.items ??= [];
-        for (let i = 0; i < this.#config.items.length; i++) {
-            const x = this.#config.items[i];
+        /**
+         * @param {Event} event
+         * @param {Bookmark} selected
+         * @param {number} index
+         */
+        const onDelete = async (event, selected, index) => {
+            if (!(await window_confirm(`Do you want to delete bookmark '${selected.link}'?`, WINDOW_CONFIRM_SETTINGS))) {
+                return;
+            }
 
-            const item = jsml.div({
-                class: "bookmark",
-                onClick: () => {
-                    const isSelected = item.classList.contains("selected");
-                    deselect();
-
-                    if (isSelected) {
-                        return;
-                    }
-
-                    item.classList.add("selected");
-
-                    selected = item;
-                    selectedBookmark = x;
-                    selectedIndex = i;
-                }
-            }, x.title);
-
-            items.append(item);
+            this.#config.items.splice(index, 1);
+            save();
         }
-
-        return [
-            TitleInspector("Bookmarks"),
-
-            HRInspector(),
-
-            jsml.div("i-bookmarks", [
-                items,
-                jsml.div('row', [
-                    jsml.button({
-                        onClick: async () => {
-                            const bookmark = await this.inspectItem();
-                            if (!is(bookmark)) {
-                                return;
-                            }
-
-                            this.#config.items.push(bookmark);
-
-                            tabby_save();
-                            tabby_inspect(this.inspect());
-                            this.renderItems();
-                        }
-                    }, "Add"),
-                    jsml.button({
-                        onClick: async () => {
-                            if (!is(selected)) {
-                                return;
-                            }
-
-                            const bookmark = await this.inspectItem(this.#config.items[selectedIndex]);
-                            if (!is(bookmark)) {
-                                return;
-                            }
-
-                            this.#config.items[selectedIndex] = bookmark;
-
-                            tabby_save();
-                            tabby_inspect(this.inspect());
-                            this.renderItems();
-                        }
-                    }, "Edit"),
-                    jsml.button({
-                        onClick: async () => {
-                            if (!is(selectedIndex)) {
-                                return;
-                            }
-
-                            if (!(await window_confirm(`Do you want to delete bookmark '${selectedBookmark.link}'?`, WINDOW_CONFIRM_SETTINGS))) {
-                                return;
-                            }
-
-                            this.#config.items.splice(selectedIndex, 1);
-
-                            tabby_save();
-                            tabby_inspect(this.inspect());
-                            this.renderItems();
-                        }
-                    }, "Delete"),
-                ])
-            ]),
+        
+        return html`
+            <${TabbyTitle} title="Bookmarks" />
             
-            // HRInspector(),
-            //
-            // ...this.createBaseWidgetSettings()
-        ];
+            <${TabbyHR} />
+            
+            <${EditableList}
+                class="i-bookmarks"
+                collection="${this.#config.items}"
+                onAdd="${onAdd}"
+                onEdit="${onEdit}"
+                onDelete="${onDelete}"
+                fallback="No bookmarks"
+            >
+                ${x => html`
+                    <div class="bookmark">
+                        ${x.title}
+                    </div>
+                `}
+            </>
+        `;
     }
 
     save() {

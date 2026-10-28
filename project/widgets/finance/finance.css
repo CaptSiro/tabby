@@ -373,7 +373,7 @@
     flex-direction: column;
     gap: var(--gap-smaller);
 
-    & .finance-categories-listing {
+    & .selectable-list {
         height: 40vh;
         overflow-y: auto;
         overflow-x: hidden;
@@ -413,7 +413,9 @@
                 opacity: 1;
             }
         }
+    }
 
+    & [role="option"] {
         &:nth-child(even) {
             background-color: var(--container-2);
         }
@@ -585,7 +587,7 @@
 
 
 
-.i-finance .finance-funds-listing {
+.i-finance.finance-funds .selectable-list {
     height: auto;
     max-height: 30vh;
 

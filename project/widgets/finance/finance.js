@@ -165,47 +165,61 @@ class FinanceWidget extends TabbyWidget {
         this.#config = config;
         this.setConfig(config);
         
-        const { div, button, span } = jsml;
-
-        this.#center = div("center");
+        this.#center = html.element(html`<div class="center"></div>`);
         this.#ring = finance_svg("svg", {
             class: "ring finance-ring",
             viewBox: "0 0 100 100"
         });
         // no title, hovering the collapsed widget must not tell anything
-        this.#investDot = span({ class: "invest-dot", hidden: true });
-        this.#chart = div({
-            class: "chart",
-            onClick: () => this.toggleExpanded()
-        }, [this.#ring, this.#center, this.#investDot]);
+        this.#investDot = html.element(html`<span class="invest-dot" hidden></span>`);
+        this.#chart = html.element(html`
+            <div class="chart" onClick="${() => this.toggleExpanded()}">
+                ${this.#ring}
+                ${this.#center}
+                ${this.#investDot}
+            </div>
+        `);
 
-        this.#recent = div("recent");
+        this.#recent = html.element(html`<div class="recent"></div>`);
         // href is set when rendered, it depends on the preferred currency
-        this.#allMovements = jsml.a({ class: "button all-movements", hidden: true }, [
-            nf("nf-fa-list", "≡"),
-            span(_, "All movements")
-        ]);
-        this.#flow = div("flow");
-        this.#investBar = div({ class: "invest-bar", hidden: true });
+        this.#allMovements = html.element(html`
+            <a class="button all-movements" hidden>
+                ${nf("nf-fa-list", "≡")}
+                <span>All movements</span>
+            </a>
+        `);
+        this.#flow = html.element(html`<div class="flow"></div>`);
+        this.#investBar = html.element(html`<div class="invest-bar" hidden></div>`);
 
-        this.#display = div("w-finance", [
-            this.#chart,
-            this.#flow,
-            this.#investBar,
-            div("details", [
-                this.#recent,
-                div("add-buttons", [FINANCE_TYPE_EXPENSE, FINANCE_TYPE_INCOME].map(type =>
-                    button({
-                        class: "add " + type,
-                        onClick: () => this.addTransaction(type)
-                    }, [
-                        nf(FINANCE_TYPES[type].icon, "+"),
-                        span(_, FINANCE_TYPES[type].add)
-                    ])
-                )),
-                this.#allMovements
-            ])
-        ]);
+        const FinanceButton = ({ type }) => {
+            return html`
+                <button class="${['add', type]}" onClick="${() => this.addTransaction(type)}">
+                    ${nf(FINANCE_TYPES[type].icon, "+")}
+                    <span>
+                        ${FINANCE_TYPES[type].add}
+                    </span>
+                </button>
+            `;
+        }
+        
+        this.#display = html.element(html`
+            <div class="w-finance">
+                ${this.#chart}
+                ${this.#flow}
+                ${this.#investBar}
+                
+                <div class="details">
+                    ${this.#recent}
+                    
+                    <div class="add-buttons">
+                        <${FinanceButton} type="${FINANCE_TYPE_EXPENSE}" />
+                        <${FinanceButton} type="${FINANCE_TYPE_INCOME}" />
+                    </div>
+                    
+                    ${this.#allMovements}
+                </div>
+            </div>
+        `);
 
         // other tabs may have added expenses, or a new month may have started
         document.addEventListener("visibilitychange", () => {
@@ -387,7 +401,6 @@ class FinanceWidget extends TabbyWidget {
     }
 
     renderInvest() {
-        const { span, button } = jsml;
         const state = this.#invest;
         const isDue = this.#isInvestAvailable === true && state?.isDue === true;
 
@@ -401,38 +414,39 @@ class FinanceWidget extends TabbyWidget {
         }
 
         const isSet = is(state.balance);
-
-        jsml_addContent(this.#investBar, [
-            nf("nf-md-bank", "B"),
-            span("label", "Balance"),
-            span(
-                cls("value", { negative: isSet && state.balance < 0, unset: !isSet }),
-                isSet
+        
+        jsml_addContent(this.#investBar, html`
+            ${nf("nf-md-bank", "B")}
+            
+            <span class="label">Balance</span>
+            
+            <span class="${cls("value", { negative: isSet && state.balance < 0, unset: !isSet })}">
+                ${isSet
                     ? finance_formatMoney(state.balance, state.currency)
-                    : "Set it in the settings"
-            ),
-            button({
-                class: cls("invest-button", { due: isDue }),
-                title: "Investing plan",
-                onClick: () => this.openInvest()
-            }, nf("nf-md-chart_line", "I"))
-        ]);
+                    : "Set it in the settings"}
+            </span>
+            
+            <button
+                class="${cls("invest-button", { due: isDue })}"
+                title="Investing plan"
+                onClick="${() => this.openInvest()}"
+            >${nf("nf-md-chart_line", "I")}</button>
+        `);
     }
 
     renderChart() {
         this.#center.textContent = "";
-        const { span } = jsml;
 
         if (this.#isAvailable === false) {
             finance_renderRing(this.#ring, [{ color: "var(--finance-remaining)", fraction: 1 }]);
             this.#chart.title = this.#unavailableReason;
-            this.#center.append(span("label", "API unavailable"));
+            this.#center.append(html.node(html`<span class="label">API unavailable</span>`));
             return;
         }
 
         if (!is(this.#summary)) {
             finance_renderRing(this.#ring, [{ color: "var(--finance-remaining)", fraction: 1 }]);
-            this.#center.append(span("label", "Loading…"));
+            this.#center.append(html.node(html`<span class="label">Loading…</span>`));
             return;
         }
 
@@ -470,13 +484,15 @@ class FinanceWidget extends TabbyWidget {
         finance_renderRing(this.#ring, segments);
         this.#chart.title = titles.join("\n");
 
-        jsml_addContent(this.#center, [
-            span(
-                "balance " + (isOver ? "negative" : "positive"),
-                finance_formatMoney(balance, this.currency)
-            ),
-            span("label", isOver ? "over budget" : "left this month")
-        ]);
+        jsml_addContent(this.#center, html`
+            <span class="${['balance', isOver ? 'negative' : 'positive']}">
+                ${finance_formatMoney(balance, this.currency)}
+            </span>
+
+            <span class="label">
+                ${isOver ? "over budget" : "left this month"}
+            </span>
+        `);
     }
 
     /**
@@ -490,8 +506,7 @@ class FinanceWidget extends TabbyWidget {
         if (this.#flow.hidden) {
             return;
         }
-        
-        const { div, span } = jsml;
+
         const { income, expenses } = this.#summary;
         const largest = Math.max(income, expenses);
         const net = income - expenses;
@@ -500,16 +515,19 @@ class FinanceWidget extends TabbyWidget {
 
         for (const [type, value] of [[FINANCE_TYPE_INCOME, income], [FINANCE_TYPE_EXPENSE, expenses]]) {
             this.#flow.append(
-                div("flow-row " + type, [
-                    nf(FINANCE_TYPES[type].icon, type === FINANCE_TYPE_INCOME ? "+" : "-"),
-                    div("bar", div({
-                        class: "fill",
-                        style: {
-                            width: std_percentage(largest > 0 ? value / largest : 0)
-                        }
-                    })),
-                    span("value", finance_formatMoney(value, this.currency))
-                ])
+                html.node(html`
+                    <div class="${['flow-row', type]}">
+                        ${nf(FINANCE_TYPES[type].icon, type === FINANCE_TYPE_INCOME ? "+" : "-")}
+                        
+                        <div class="bar">
+                            <div class="fill" style="${{ width: std_percentage(largest > 0 ? value / largest : 0) }}"></div>
+                        </div>
+                        
+                        <span class="value">
+                            ${finance_formatMoney(value, this.currency)}
+                        </span>
+                    </div>
+                `),
             );
         }
     }
@@ -525,7 +543,7 @@ class FinanceWidget extends TabbyWidget {
 
         const recent = this.#summary?.recent ?? [];
         if (recent.length === 0) {
-            this.#recent.append(jsml.div("empty", "No movements yet"));
+            this.#recent.append(html.node(html`<div class="empty">No movements yet</div>`));
             return;
         }
 
@@ -604,222 +622,213 @@ class FinanceWidget extends TabbyWidget {
         }
 
         await this.refresh();
-        tabby_inspect(this.inspect());
+        tabby_inspect(() => this.inspect());
         
         return response;
     }
 
     inspect() {
         const api = finance_api();
-        const items = jsml.div("finance-categories-listing");
-        let selected = undefined;
-        let selectedCategory = undefined;
-
-        const deselect = () => {
-            selected?.classList.remove("selected");
-            selected = undefined;
-            selectedCategory = undefined;
-        };
-
         const categories = [
             ...this.#catalog.of(FINANCE_TYPE_EXPENSE),
             ...this.#catalog.of(FINANCE_TYPE_INCOME),
         ];
 
-        for (const category of categories) {
-            const item = jsml.div({
-                class: "category",
-                onClick: () => {
-                    const isSelected = item.classList.contains("selected");
-                    deselect();
-
-                    if (isSelected) {
-                        return;
-                    }
-
-                    item.classList.add("selected");
-                    selected = item;
-                    selectedCategory = category;
+        const target = [
+            () => this.target,
+            x => {
+                const value = Number(x);
+                if (x === "" || isNaN(value) || value < 0) {
+                    return String(this.target);
                 }
-            }, [
-                finance_CategoryBadge(category),
-                jsml.span("name", category.name),
-                jsml.span("type finance-badge " + category.type, nf(
-                    category.type === 'income'
-                        ? 'nf-md-trending_up'
-                        : 'nf-md-trending_down'
-                ))
-            ]);
 
-            items.append(item);
+                this.#config.target = value;
+                tabby_save();
+                this.renderChart();
+                return value;
+            }
+        ];
+        const currencies = FINANCE_CURRENCIES.map(currency => ({
+            text: currency,
+            value: currency,
+            selected: currency === this.currency
+        }));
+        const listedMovements = [
+            () => this.recentCount,
+            x => {
+                const value = Number(x);
+                if (x === "" || !Number.isInteger(value) || value < 0 || value > FINANCE_RECENT_MAX) {
+                    return String(this.recentCount);
+                }
+
+                this.#config.recent = value;
+                tabby_save();
+                this.refresh();
+                return value;
+            }
+        ];
+
+        const onAdd = async () => {
+            const category = await finance_openCategoryDialog();
+            if (!is(category)) {
+                return;
+            }
+
+            await this.saveCategory(category);
+        }
+        /**
+         * @param {Event} event
+         * @param {FinanceCategory} selected
+         */
+        const onEdit = async (event, selected) => {
+            const category = await finance_openCategoryDialog(selected);
+            if (!is(category)) {
+                return;
+            }
+
+            await this.saveCategory(category);
+        }
+        /**
+         * @param {Event} event
+         * @param {FinanceCategory} selected
+         */
+        const onDelete = async (event, selected) => {
+            if (this.#isAvailable !== true) {
+                return;
+            }
+
+            if (!(await window_confirm(`Do you want to delete category '${selected.name}'?`, WINDOW_CONFIRM_SETTINGS))) {
+                return;
+            }
+
+            const result = await finance_request(
+                finance_url(api.categories, { id: selected.id }),
+                { method: "DELETE" }
+            );
+
+            if (!is(result)) {
+                return;
+            }
+
+            await this.refresh();
+            tabby_inspect(() => this.inspect());
         }
 
-        return [
-            TitleInspector("Finance"),
+        return html`
+            <${TabbyTitle} title="Finance" />
+            <${TabbyHR} />
 
-            HRInspector(),
+            <${TabbyNumber}
+                value="${target}"
+                label="Monthly budget"
+                placeholder="10000"
+                measurement="${this.currency}"
+                min="0"
+                step="100"
+            />
 
-            NumberInspector(this.target, () => true, "Monthly budget", "10000", this.currency, {
-                min: "0",
-                step: "100",
-                onChange: event => {
-                    const value = Number(event.target.value);
-                    if (event.target.value === "" || isNaN(value) || value < 0) {
-                        event.target.value = String(this.target);
-                        return;
-                    }
+            <${TabbySelect} label="Preferred currency" options="${currencies}" setValue="${async x => {
+                this.#config.currency = x;
+                tabby_save();
+                await this.refresh();
+                tabby_inspect(() => this.inspect());
+            }}" />
 
-                    this.#config.target = value;
-                    tabby_save();
-                    this.renderChart();
-                }
-            }),
+            <${TabbyNumber}
+                value="${listedMovements}"
+                label="Listed movements"
+                placeholder="${FINANCE_RECENT_DEFAULT}"
+                min="0"
+                max="${FINANCE_RECENT_MAX}"
+                step="1"
+            />
 
-            SelectInspector(
-                async value => {
-                    this.#config.currency = value;
-                    tabby_save();
-                    await this.refresh();
-                    tabby_inspect(this.inspect());
-                    return true;
-                },
-                FINANCE_CURRENCIES.map(currency => ({
-                    text: currency,
-                    value: currency,
-                    selected: currency === this.currency
-                })),
-                "Preferred currency"
-            ),
+            <${TabbyNote} note="The widget lists the movements (income, expenses and investments) that were added or changed last." />
 
-            NumberInspector(this.recentCount, () => true, "Listed movements", String(FINANCE_RECENT_DEFAULT), _, {
-                min: "0",
-                max: String(FINANCE_RECENT_MAX),
-                step: "1",
-                onChange: async event => {
-                    const value = Number(event.target.value);
-                    if (event.target.value === "" || !Number.isInteger(value) || value < 0 || value > FINANCE_RECENT_MAX) {
-                        event.target.value = String(this.recentCount);
-                        return;
-                    }
+            <${TabbyHR} />
 
-                    this.#config.recent = value;
-                    tabby_save();
-                    await this.refresh();
-                }
-            }),
-            NoteInspector("The widget lists the movements (income, expenses and investments) that were added or changed last."),
+            <${Show} when="${this.#isAvailable === false}">
+                <${TabbyNote} note="Finance API is not available: ${this.#unavailableReason}" />
+            </>
 
-            HRInspector(),
+            <${EditableList}
+                class="i-finance"
+                collection="${categories}"
+                onAdd="${onAdd}"
+                onEdit="${onEdit}"
+                onDelete="${onDelete}"
+                fallback="No categories"
+            >
+                ${x => html`
+                    <div class="category">
+                        ${finance_CategoryBadge(x)}
 
-            Optional(this.#isAvailable === false, NoteInspector("Finance API is not available: " + this.#unavailableReason)),
+                        <span class="name">
+                            ${x.name}
+                        </span>
 
-            jsml.div("i-finance", [
-                jsml.span(_, "Categories"),
-                items,
-                jsml.div('row', [
-                    jsml.button({
-                        onClick: async () => {
-                            const category = await finance_openCategoryDialog();
-                            if (!is(category)) {
-                                return;
-                            }
+                        <span class="${['type', 'finance-badge', x.type]}">
+                            ${nf(
+                                x.type === 'income'
+                                    ? 'nf-md-trending_up'
+                                    : 'nf-md-trending_down'
+                            )}
+                        </span>
+                    </div>
+                `}
+            </>
 
-                            await this.saveCategory(category);
-                        }
-                    }, "Add"),
-                    jsml.button({
-                        onClick: async () => {
-                            if (!is(selectedCategory)) {
-                                return;
-                            }
+            <${TabbyHR} />
 
-                            const category = await finance_openCategoryDialog(selectedCategory);
-                            if (!is(category)) {
-                                return;
-                            }
-
-                            await this.saveCategory(category);
-                        }
-                    }, "Edit"),
-                    jsml.button({
-                        onClick: async () => {
-                            if (!is(selectedCategory) || this.#isAvailable !== true) {
-                                return;
-                            }
-
-                            if (!(await window_confirm(`Do you want to delete category '${selectedCategory.name}'?`, WINDOW_CONFIRM_SETTINGS))) {
-                                return;
-                            }
-
-                            const result = await finance_request(
-                                finance_url(api.categories, { id: selectedCategory.id }),
-                                { method: "DELETE" }
-                            );
-
-                            if (!is(result)) {
-                                return;
-                            }
-
-                            await this.refresh();
-                            tabby_inspect(this.inspect());
-                        }
-                    }, "Delete"),
-                ])
-            ]),
-
-            HRInspector(),
-
-            ...this.inspectInvest(),
-        ];
+            ${this.inspectInvest()}
+        `;
     }
 
     /**
      * Investing section of the inspector: reminder state, balance, the share curve and the funds
      *
-     * @return {Content[]}
+     * @return {JsmlContent}
      */
     inspectInvest() {
-        const { div, span, button, p } = jsml;
         const state = this.#invest;
 
         if (this.#isInvestAvailable !== true || !is(state)) {
-            return [
-                TitleInspector("Investing"),
-                NoteInspector("Investing is not available: " + (this.#investUnavailableReason || "Loading…")),
-            ];
+            return html`
+                <${TabbyTitle} title="Investing" />
+                <${TabbyNote} note="Investing is not available: ${this.#investUnavailableReason || "Loading…"}" />
+            `;
         }
 
         const { settings, currency } = state;
-        const reinspect = () => tabby_inspect(this.inspect());
+        const reinspect = () => tabby_inspect(() => this.inspect());
 
         /**
-         * NumberInspector that saves one setting, invalid values are reverted
+         * TabbyNumber that saves one setting, invalid values and failed saves are reverted
          *
-         * @param {string} label
-         * @param {number | undefined} value
-         * @param {(value: number) => boolean} isValid
-         * @param {(value: number) => Partial<FinanceInvestSettingsDraft>} changes
-         * @param {string} measurement
-         * @param {Props} props
+         * @param {JsmlTagProps<"input"> & {
+         *      value: number | undefined,
+         *      isValid: (value: number) => boolean,
+         *      changes: (value: number) => Partial<FinanceInvestSettingsDraft>,
+         *      label: string,
+         *      measurement?: string,
+         * }} props
          */
-        const SettingInspector = (label, value, isValid, changes, measurement, props = {}) =>
-            NumberInspector(value, () => true, label, _, measurement, {
-                ...props,
-                onChange: async event => {
-                    const number = Number(event.target.value);
-                    if (event.target.value === "" || isNaN(number) || !isValid(number)) {
-                        event.target.value = is(value) ? String(value) : "";
-                        return;
-                    }
+        const Setting = ({ value: initial, isValid, changes, ...p }) => {
+            const [value, setValue] = signal(initial);
 
-                    if (await this.saveInvest(changes(number))) {
-                        reinspect();
-                        return;
-                    }
-
-                    event.target.value = is(value) ? String(value) : "";
+            const save = number => {
+                if (!isValid(number)) {
+                    return value();
                 }
-            });
+
+                const previous = value();
+                setValue(number);
+                this.saveInvest(changes(number)).then(isSaved => isSaved ? reinspect() : setValue(previous));
+                return number;
+            };
+
+            return html`<${TabbyNumber} value="${[value, save]}" ...${p} />`;
+        };
 
         // reminder state
         let status;
@@ -832,37 +841,18 @@ class FinanceWidget extends TabbyWidget {
         }
 
         const canResume = !settings.enabled || is(settings.pausedUntil);
+        const balanceNote = is(settings.balance)
+            ? `Set on ${finance_formatDate(settings.balance.date)} to ${finance_formatMoney(settings.balance.amount, settings.balance.currency)}. `
+                + "Income, expenses and investments recorded since then adjust it. Enter your real balance whenever it drifts."
+            : "Enter your current bank balance. From then on income, expenses and investments you record adjust it.";
+        const explanation = `On the reminder day you get a recommendation to invest a part of last month's surplus (income − expenses). `
+            + `The part grows with your bank balance: at ${finance_formatMoney(state.halfPoint, currency)} it is `
+            + `${finance_formatShare(settings.maxShare / 200)}, half of the max. It keeps approaching `
+            + `${settings.maxShare} % but never reaches it, so more money always stays in the bank.`;
 
         // funds
         const funds = state.funds.filter(fund => !fund.isDeleted);
         const weights = funds.reduce((sum, fund) => sum + fund.weight, 0);
-        const items = div("finance-categories-listing finance-funds-listing");
-        let selected = undefined;
-        let selectedFund = undefined;
-
-        for (const fund of funds) {
-            const item = div({
-                class: "category",
-                onClick: () => {
-                    const isSelected = item.classList.contains("selected");
-                    selected?.classList.remove("selected");
-                    selected = selectedFund = undefined;
-
-                    if (isSelected) {
-                        return;
-                    }
-
-                    item.classList.add("selected");
-                    selected = item;
-                    selectedFund = fund;
-                }
-            }, [
-                span("name", [fund.name, span("symbol", fund.symbol)]),
-                span("weight", finance_formatShare(weights > 0 ? fund.weight / weights : 0))
-            ]);
-
-            items.append(item);
-        }
 
         const saveFund = async fund => {
             const result = await finance_send(finance_api().funds, is(fund.id) ? "PUT" : "POST", fund);
@@ -873,127 +863,140 @@ class FinanceWidget extends TabbyWidget {
             await this.refreshInvest();
             reinspect();
         };
+        const onAddFund = async () => {
+            const fund = await finance_openFundDialog();
+            if (is(fund)) {
+                await saveFund(fund);
+            }
+        };
+        /**
+         * @param {Event} event
+         * @param {FinanceFund} selected
+         */
+        const onEditFund = async (event, selected) => {
+            const fund = await finance_openFundDialog(selected);
+            if (is(fund)) {
+                await saveFund(fund);
+            }
+        };
+        /**
+         * @param {Event} event
+         * @param {FinanceFund} selected
+         */
+        const onDeleteFund = async (event, selected) => {
+            if (!(await window_confirm(`Do you want to delete fund '${selected.name}'?`, WINDOW_CONFIRM_SETTINGS))) {
+                return;
+            }
 
-        return [
-            TitleInspector("Investing"),
+            const result = await finance_request(
+                finance_url(finance_api().funds, { id: selected.id }),
+                { method: "DELETE" }
+            );
 
-            div("i-finance-invest", [
-                div("status", [
-                    span(_, "Reminders: " + status),
-                    Optional(canResume, button({
-                        onClick: async () => {
+            if (!is(result)) {
+                return;
+            }
+
+            await this.refreshInvest();
+            reinspect();
+        };
+
+        return html`
+            <${TabbyTitle} title="Investing" />
+
+            <div class="i-finance-invest">
+                <div class="status">
+                    <span>Reminders: ${status}</span>
+
+                    <${Show} when="${canResume}">
+                        <button onClick="${async () => {
                             if (await this.saveInvest({ enabled: true, pausedUntil: null })) {
                                 reinspect();
                             }
-                        }
-                    }, "Resume"))
-                ]),
-            ]),
+                        }}">Resume</button>
+                    </>
+                </div>
+            </div>
 
-            SettingInspector(
-                "Bank balance",
-                is(state.balance) ? Math.round(state.balance) : undefined,
-                value => Math.abs(value) <= Number.MAX_SAFE_INTEGER,
-                value => ({ balance: value }),
-                currency,
-                { class: "finance-wide", step: "100", placeholder: "180000" }
-            ),
-            NoteInspector(
-                is(settings.balance)
-                    ? `Set on ${finance_formatDate(settings.balance.date)} to ${finance_formatMoney(settings.balance.amount, settings.balance.currency)}. `
-                    + "Income, expenses and investments recorded since then adjust it. Enter your real balance whenever it drifts."
-                    : "Enter your current bank balance. From then on income, expenses and investments you record adjust it."
-            ),
+            <${Setting}
+                label="Bank balance"
+                value="${is(state.balance) ? Math.round(state.balance) : undefined}"
+                isValid="${value => Math.abs(value) <= Number.MAX_SAFE_INTEGER}"
+                changes="${value => ({ balance: value })}"
+                measurement="${currency}"
+                class="finance-wide"
+                step="100"
+                placeholder="180000"
+            />
+            <${TabbyNote} note="${balanceNote}" />
 
-            SettingInspector(
-                "Reminder day",
-                settings.day,
-                value => Number.isInteger(value) && value >= 1 && value <= FINANCE_INVEST_DAY_MAX,
-                value => ({ day: value }),
-                "of month",
-                { min: "1", max: String(FINANCE_INVEST_DAY_MAX), step: "1" }
-            ),
+            <${Setting}
+                label="Reminder day"
+                value="${settings.day}"
+                isValid="${value => Number.isInteger(value) && value >= 1 && value <= FINANCE_INVEST_DAY_MAX}"
+                changes="${value => ({ day: value })}"
+                measurement="of month"
+                min="1"
+                max="${FINANCE_INVEST_DAY_MAX}"
+                step="1"
+            />
 
-            SettingInspector(
-                "Max invested share",
-                settings.maxShare,
-                value => value > 0 && value <= 100,
-                value => ({ maxShare: value }),
-                "%",
-                { min: "1", max: "100", step: "1" }
-            ),
+            <${Setting}
+                label="Max invested share"
+                value="${settings.maxShare}"
+                isValid="${value => value > 0 && value <= 100}"
+                changes="${value => ({ maxShare: value })}"
+                measurement="%"
+                min="1"
+                max="100"
+                step="1"
+            />
 
-            SettingInspector(
-                "Half point",
-                Math.round(state.halfPoint),
-                value => value > 0,
-                value => ({ halfPoint: value }),
-                currency,
-                { class: "finance-wide", min: "1", step: "10000" }
-            ),
+            <${Setting}
+                label="Half point"
+                value="${Math.round(state.halfPoint)}"
+                isValid="${value => value > 0}"
+                changes="${value => ({ halfPoint: value })}"
+                measurement="${currency}"
+                class="finance-wide"
+                min="1"
+                step="10000"
+            />
 
-            div("i-finance-invest", [
-                finance_ShareCurve(state),
-                p("explanation", [
-                    `On the reminder day you get a recommendation to invest a part of last month's surplus (income − expenses). `
-                    + `The part grows with your bank balance: at ${finance_formatMoney(state.halfPoint, currency)} it is `
-                    + `${finance_formatShare(settings.maxShare / 200)}, half of the max. It keeps approaching `
-                    + `${settings.maxShare} % but never reaches it, so more money always stays in the bank.`
-                ]),
-                p("explanation formula", "share = max × balance ÷ (balance + half point)"),
-            ]),
+            <div class="i-finance-invest">
+                ${finance_ShareCurve(state)}
 
-            div("i-finance", [
-                span(_, "Funds (target share of all invested money)"),
-                items,
-                div("row", [
-                    button({
-                        onClick: async () => {
-                            const fund = await finance_openFundDialog();
-                            if (is(fund)) {
-                                await saveFund(fund);
-                            }
-                        }
-                    }, "Add"),
-                    button({
-                        onClick: async () => {
-                            if (!is(selectedFund)) {
-                                return;
-                            }
+                <p class="explanation">${explanation}</p>
 
-                            const fund = await finance_openFundDialog(selectedFund);
-                            if (is(fund)) {
-                                await saveFund(fund);
-                            }
-                        }
-                    }, "Edit"),
-                    button({
-                        onClick: async () => {
-                            if (!is(selectedFund)) {
-                                return;
-                            }
+                <p class="explanation formula">share = max × balance ÷ (balance + half point)</p>
+            </div>
 
-                            if (!(await window_confirm(`Do you want to delete fund '${selectedFund.name}'?`, WINDOW_CONFIRM_SETTINGS))) {
-                                return;
-                            }
+            <span>Funds (target share of all invested money)</span>
 
-                            const result = await finance_request(
-                                finance_url(finance_api().funds, { id: selectedFund.id }),
-                                { method: "DELETE" }
-                            );
+            <${EditableList}
+                class="i-finance finance-funds"
+                collection="${funds}"
+                onAdd="${onAddFund}"
+                onEdit="${onEditFund}"
+                onDelete="${onDeleteFund}"
+                fallback="No funds"
+            >
+                ${fund => html`
+                    <div class="category">
+                        <span class="name">
+                            ${fund.name}
+                            <span class="symbol">${fund.symbol}</span>
+                        </span>
 
-                            if (!is(result)) {
-                                return;
-                            }
+                        <span class="weight">
+                            ${finance_formatShare(weights > 0 ? fund.weight / weights : 0)}
+                        </span>
+                    </div>
+                `}
+            </>
 
-                            await this.refreshInvest();
-                            reinspect();
-                        }
-                    }, "Delete"),
-                ])
-            ]),
-            NoteInspector("Symbols are Yahoo Finance symbols, e.g. VWCE.DE (Xetra), VWRL.AS (Amsterdam), O (NYSE)."),
-        ];
+            <${TabbyNote} note="Symbols are Yahoo Finance symbols, e.g. VWCE.DE (Xetra), VWRL.AS (Amsterdam), O (NYSE)." />
+        `;
     }
 
     save() {
@@ -1021,52 +1024,41 @@ function finance_openFundDialog(fund = null) {
 
         let ret = undefined;
 
+        const name = [() => result.name, value => result.name = value.trim()];
+        const symbol = [() => result.symbol, value => result.symbol = value.trim().toUpperCase()];
+        const weight = [() => result.weight, value => result.weight = value];
+
+        const confirm = async () => {
+            if (result.name === "" || result.symbol === "") {
+                await window_alert("Name and symbol must be set", WINDOW_ALERT_SETTINGS);
+                return;
+            }
+
+            if (isNaN(result.weight) || result.weight <= 0) {
+                await window_alert("Weight must be greater than zero", WINDOW_ALERT_SETTINGS);
+                return;
+            }
+
+            ret = result;
+            window_close(w);
+        };
+
         const w = window_create(
             "Fund",
-            jsml.div("text-window", [
-                TextFieldInspector(result.name, value => {
-                    result.name = value.trim();
-                    return true;
-                }, "Name", "Vanguard FTSE All-World"),
+            html.element(html`
+                <div class="text-window">
+                    <${TabbyTextField} value="${name}" label="Name" placeholder="Vanguard FTSE All-World" />
+                    <${TabbyTextField} value="${symbol}" label="Yahoo symbol" placeholder="VWCE.DE" />
+                    <${TabbyNumber} value="${weight}" label="Weight" placeholder="10" min="0" step="1" />
 
-                TextFieldInspector(result.symbol, value => {
-                    result.symbol = value.trim().toUpperCase();
-                    return true;
-                }, "Yahoo symbol", "VWCE.DE"),
+                    <${TabbyNote} note="Weights are relative, 50 / 35 / 15 and 10 / 7 / 3 split the money the same way." />
 
-                NumberInspector(result.weight, () => true, "Weight", "10", _, {
-                    min: "0",
-                    step: "1",
-                    onChange: event => {
-                        result.weight = Number(event.target.value);
-                    }
-                }),
-
-                NoteInspector("Weights are relative, 50 / 35 / 15 and 10 / 7 / 3 split the money the same way."),
-
-                jsml.div("controls", [
-                    jsml.button({
-                        onClick: async () => {
-                            if (result.name === "" || result.symbol === "") {
-                                await window_alert("Name and symbol must be set", WINDOW_ALERT_SETTINGS);
-                                return;
-                            }
-
-                            if (isNaN(result.weight) || result.weight <= 0) {
-                                await window_alert("Weight must be greater than zero", WINDOW_ALERT_SETTINGS);
-                                return;
-                            }
-
-                            ret = result;
-                            window_close(w);
-                        }
-                    }, "Ok"),
-
-                    jsml.button({
-                        onClick: () => window_close(w)
-                    }, "Cancel"),
-                ])
-            ]),
+                    <div class="controls">
+                        <button onClick="${confirm}">Ok</button>
+                        <button onClick="${() => window_close(w)}">Cancel</button>
+                    </div>
+                </div>
+            `),
             {
                 isDialog: true,
                 isDraggable: true,
@@ -1089,7 +1081,6 @@ function finance_openFundDialog(fund = null) {
  */
 function finance_openInvestDialog(financeWidget, state) {
     return new Promise(resolve => {
-        const { div, span, button, input, h4 } = jsml;
         const api = finance_api();
         const { currency, settings } = state;
         const funds = state.funds.filter(fund => !fund.isDeleted);
@@ -1105,26 +1096,31 @@ function finance_openInvestDialog(financeWidget, state) {
         /** @type {Map<number, FinanceFundQuote>} */
         const quotes = new Map();
 
-        const totalElement = span("value");
-        const bankElement = span("value");
+        const totalElement = html.element(html`<span class="value"></span>`);
+        const bankElement = html.element(html`<span class="value"></span>`);
 
         const amountOf = fundId => {
             const value = Number(amountInputs.get(fundId)?.value || 0);
             return isNaN(value) ? 0 : value;
         };
 
+        const dipHint = "The price is well below its 52-week high, consider investing more into this fund. "
+            + "It is only a hint, nobody can tell whether it will drop further.";
+
+        // called on every keystroke, plain conditions instead of <Show> so no reactive nodes pile up
         const renderQuote = fundId => {
             const element = quoteElements.get(fundId);
             const quote = quotes.get(fundId);
-            element.textContent = "";
 
             if (!is(quote)) {
-                element.append(span("muted", "Loading price…"));
+                element.replaceChildren(html.node(html`<span class="muted">Loading price…</span>`));
                 return;
             }
 
             if (!quote.isAvailable) {
-                element.append(span("muted", `Price of ${quote.symbol} is not available`));
+                element.replaceChildren(html.node(html`
+                    <span class="muted">Price of ${quote.symbol} is not available</span>
+                `));
                 return;
             }
 
@@ -1133,21 +1129,23 @@ function finance_openInvestDialog(financeWidget, state) {
                 ? amount * quote.rate / quote.price
                 : undefined;
 
-            jsml_addContent(element, [
-                span(_, finance_formatMoney(quote.price, quote.currency)),
-                span(
-                    { class: "muted", title: `52-week high: ${finance_formatMoney(quote.high, quote.currency)}` },
-                    quote.drop >= 0.005
+            element.replaceChildren(html.node(html`
+                <span>${finance_formatMoney(quote.price, quote.currency)}</span>
+
+                <span class="muted" title="52-week high: ${finance_formatMoney(quote.high, quote.currency)}">
+                    ${quote.drop >= 0.005
                         ? `−${finance_formatShare(quote.drop)} from 52w high`
-                        : "at 52w high"
-                ),
-                Optional(quote.multiplier > 1, span({
-                    class: "dip",
-                    title: "The price is well below its 52-week high, consider investing more into this fund. "
-                        + "It is only a hint, nobody can tell whether it will drop further."
-                }, `dip: consider ×${quote.multiplier}`)),
-                Optional(is(units), span("muted", `≈ ${units?.toLocaleString(undefined, { maximumFractionDigits: 3 })} units`)),
-            ]);
+                        : "at 52w high"}
+                </span>
+
+                ${quote.multiplier > 1
+                    ? html`<span class="dip" title="${dipHint}">dip: consider ×${quote.multiplier}</span>`
+                    : undefined}
+
+                ${is(units)
+                    ? html`<span class="muted">≈ ${units.toLocaleString(undefined, { maximumFractionDigits: 3 })} units</span>`
+                    : undefined}
+            `));
         };
 
         const update = () => {
@@ -1161,48 +1159,60 @@ function finance_openInvestDialog(financeWidget, state) {
         };
 
         const fundRows = funds.map(fund => {
-            const amountInput = input({
-                class: "amount-input",
-                type: "text",
-                inputmode: "decimal",
-                autocomplete: "off",
-                value: String(allocation.get(fund.id) ?? 0),
-                onInput: () => {
-                    const sanitized = finance_sanitizeAmount(amountInput.value);
-                    if (amountInput.value !== sanitized) {
-                        amountInput.value = sanitized;
-                    }
+            const amountInput = /** @type {HTMLInputElement} */ (html.element(html`
+                <input
+                    class="amount-input"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    value="${String(allocation.get(fund.id) ?? 0)}"
+                    onInput="${() => {
+                        const sanitized = finance_sanitizeAmount(amountInput.value);
+                        if (amountInput.value !== sanitized) {
+                            amountInput.value = sanitized;
+                        }
 
-                    update();
-                }
-            });
+                        update();
+                    }}"
+                >
+            `));
 
-            const quoteElement = div("quote");
+            const quoteElement = html.element(html`<div class="quote"></div>`);
             amountInputs.set(fund.id, amountInput);
             quoteElements.set(fund.id, quoteElement);
 
-            return div("fund", [
-                div("info", [
-                    span("name", fund.name),
-                    span("symbol", fund.symbol),
-                    quoteElement
-                ]),
-                div("amount", [amountInput, span("currency", currency)])
-            ]);
+            return html`
+                <div class="fund">
+                    <div class="info">
+                        <span class="name">${fund.name}</span>
+                        <span class="symbol">${fund.symbol}</span>
+                        ${quoteElement}
+                    </div>
+
+                    <div class="amount">
+                        ${amountInput}
+                        <span class="currency">${currency}</span>
+                    </div>
+                </div>
+            `;
         });
 
-        const dateInput = input({ type: "date", value: finance_isoDate() });
+        const dateInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input type="date" value="${finance_isoDate()}">
+        `));
 
         // pausing counts the current reminder as the first one
-        const pauseInput = input({
-            type: "number",
-            min: "1",
-            max: String(FINANCE_INVEST_PAUSE_MAX),
-            step: "1",
-            value: "1",
-            onInput: () => updatePause()
-        });
-        const pauseNote = span("muted");
+        const pauseInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input
+                type="number"
+                min="1"
+                max="${FINANCE_INVEST_PAUSE_MAX}"
+                step="1"
+                value="1"
+                onInput="${() => updatePause()}"
+            >
+        `));
+        const pauseNote = html.element(html`<span class="muted"></span>`);
         const pauseCount = () => {
             const count = Number(pauseInput.value);
             return Number.isInteger(count) && count >= 1 && count <= FINANCE_INVEST_PAUSE_MAX
@@ -1256,104 +1266,147 @@ function finance_openInvestDialog(financeWidget, state) {
             }
         };
 
-        const recent = state.recent.map(investment => div("investment", [
-            span("date", finance_formatDate(investment.date)),
-            span("name", fundNames.get(investment.fundId) ?? "Unknown fund"),
-            span("value", finance_formatMoney(investment.amount, investment.currency)),
-            button({
-                class: "remove",
-                title: "Delete",
-                onClick: async () => {
-                    if (!(await window_confirm("Do you want to delete this investment?", WINDOW_CONFIRM_SETTINGS))) {
-                        return;
-                    }
+        const pause = async () => {
+            const count = pauseCount();
+            if (!is(count)) {
+                return;
+            }
 
-                    const result = await finance_request(
-                        finance_url(api.investments, { id: investment.id }),
-                        { method: "DELETE" }
-                    );
+            if (await financeWidget.saveInvest({ pausedUntil: finance_shiftMonth(state.reminderMonth, count) })) {
+                window_close(w);
+            }
+        };
 
-                    if (is(result)) {
-                        // the plan depends on the investments, it is opened again with fresh numbers
-                        window_close(w);
-                        await financeWidget.openInvest();
-                    }
-                }
-            }, nf("nf-oct-trash", "x"))
-        ]));
+        const stop = async () => {
+            if (!(await window_confirm("Stop investing reminders until you resume them in the widget settings?", WINDOW_CONFIRM_SETTINGS))) {
+                return;
+            }
+
+            if (await financeWidget.saveInvest({ enabled: false })) {
+                window_close(w);
+            }
+        };
+
+        /**
+         * @param {FinanceInvestment} investment
+         */
+        const removeInvestment = async investment => {
+            if (!(await window_confirm("Do you want to delete this investment?", WINDOW_CONFIRM_SETTINGS))) {
+                return;
+            }
+
+            const result = await finance_request(
+                finance_url(api.investments, { id: investment.id }),
+                { method: "DELETE" }
+            );
+
+            if (is(result)) {
+                // the plan depends on the investments, it is opened again with fresh numbers
+                window_close(w);
+                await financeWidget.openInvest();
+            }
+        };
+
+        const recent = state.recent.map(investment => html`
+            <div class="investment">
+                <span class="date">${finance_formatDate(investment.date)}</span>
+                <span class="name">${fundNames.get(investment.fundId) ?? "Unknown fund"}</span>
+                <span class="value">${finance_formatMoney(investment.amount, investment.currency)}</span>
+
+                <button class="remove" title="Delete" onClick="${() => removeInvestment(investment)}">
+                    ${nf("nf-oct-trash", "x")}
+                </button>
+            </div>
+        `);
 
         const sourceName = finance_formatMonth(state.sourceMonth);
 
         const w = window_create(
             state.isDue ? `Investing reminder · ${finance_formatMonth(state.reminderMonth)}` : "Investing plan",
-            div("finance-invest-dialog", [
-                div("plan", [
-                    div("row", [span(_, `${sourceName} surplus`), span("value", finance_formatMoney(state.surplus, currency))]),
-                    div("row", [
-                        span(_, "Bank balance"),
-                        span("value", is(state.balance) ? finance_formatMoney(state.balance, currency) : "not set")
-                    ]),
-                    div("row", [
-                        span({ title: "max × balance ÷ (balance + half point)" }, "Invested share"),
-                        span("value", `${finance_formatShare(state.share)} of max ${settings.maxShare} %`)
-                    ]),
-                    div("row strong", [span(_, "Recommended"), span("value", finance_formatMoney(state.amount, currency))]),
-                    Optional(!is(state.balance), div("hint", "Set your bank balance in the widget settings to get a recommendation.")),
-                    Optional(is(state.balance) && state.surplus <= 0, div("hint", `There was no surplus in ${sourceName}, nothing is recommended.`)),
-                ]),
+            html.element(html`
+                <div class="finance-invest-dialog">
+                    <div class="plan">
+                        <div class="row">
+                            <span>${sourceName} surplus</span>
+                            <span class="value">${finance_formatMoney(state.surplus, currency)}</span>
+                        </div>
 
-                Optional(funds.length === 0, div("hint", "Add funds in the widget settings.")),
-                div("funds", fundRows),
+                        <div class="row">
+                            <span>Bank balance</span>
+                            <span class="value">
+                                ${is(state.balance) ? finance_formatMoney(state.balance, currency) : "not set"}
+                            </span>
+                        </div>
 
-                div("totals", [
-                    div("row strong", [span(_, "Investing"), totalElement]),
-                    div("row", [span(_, `Stays in bank of ${sourceName} surplus`), bankElement]),
-                ]),
+                        <div class="row">
+                            <span title="max × balance ÷ (balance + half point)">Invested share</span>
+                            <span class="value">${finance_formatShare(state.share)} of max ${settings.maxShare} %</span>
+                        </div>
 
-                LabelAndComponentInspector("field", "Date", dateInput),
+                        <div class="row strong">
+                            <span>Recommended</span>
+                            <span class="value">${finance_formatMoney(state.amount, currency)}</span>
+                        </div>
 
-                div("controls", [
-                    button({ class: "primary", onClick: () => record() }, [nf("nf-fa-check", "✓"), " Record investments"]),
-                    button({ onClick: () => window_close(w) }, "Later"),
-                ]),
+                        <${Show} when="${!is(state.balance)}">
+                            <div class="hint">Set your bank balance in the widget settings to get a recommendation.</div>
+                        </>
 
-                Optional(state.isDue, div("pause", [
-                    div("pause-row", [
-                        button({
-                            onClick: async () => {
-                                const count = pauseCount();
-                                if (!is(count)) {
-                                    return;
-                                }
+                        <${Show} when="${is(state.balance) && state.surplus <= 0}">
+                            <div class="hint">There was no surplus in ${sourceName}, nothing is recommended.</div>
+                        </>
+                    </div>
 
-                                if (await financeWidget.saveInvest({ pausedUntil: finance_shiftMonth(state.reminderMonth, count) })) {
-                                    window_close(w);
-                                }
-                            }
-                        }, "Pause next"),
-                        pauseInput,
-                        span(_, "reminders"),
-                    ]),
-                    pauseNote,
-                    button({
-                        class: "stop",
-                        onClick: async () => {
-                            if (!(await window_confirm("Stop investing reminders until you resume them in the widget settings?", WINDOW_CONFIRM_SETTINGS))) {
-                                return;
-                            }
+                    <${Show} when="${funds.length === 0}">
+                        <div class="hint">Add funds in the widget settings.</div>
+                    </>
 
-                            if (await financeWidget.saveInvest({ enabled: false })) {
-                                window_close(w);
-                            }
-                        }
-                    }, "Stop reminders indefinitely"),
-                ])),
+                    <div class="funds">${fundRows}</div>
 
-                Optional(recent.length > 0, div("recent-investments", [
-                    h4(_, "Recent investments"),
-                    ...recent
-                ])),
-            ]),
+                    <div class="totals">
+                        <div class="row strong">
+                            <span>Investing</span>
+                            ${totalElement}
+                        </div>
+
+                        <div class="row">
+                            <span>Stays in bank of ${sourceName} surplus</span>
+                            ${bankElement}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <${Label} label="Date" target="${dateInput}" />
+                        ${dateInput}
+                    </div>
+
+                    <div class="controls">
+                        <button class="primary" onClick="${() => record()}">${nf("nf-fa-check", "✓")} Record investments</button>
+                        <button onClick="${() => window_close(w)}">Later</button>
+                    </div>
+
+                    <${Show} when="${state.isDue}">
+                        <div class="pause">
+                            <div class="pause-row">
+                                <button onClick="${pause}">Pause next</button>
+                                ${pauseInput}
+                                <span>reminders</span>
+                            </div>
+
+                            ${pauseNote}
+
+                            <button class="stop" onClick="${stop}">Stop reminders indefinitely</button>
+                        </div>
+                    </>
+
+                    <${Show} when="${recent.length > 0}">
+                        <div class="recent-investments">
+                            <h4>Recent investments</h4>
+                            ${recent}
+                        </div>
+                    </>
+                </div>
+            `),
             FINANCE_INVEST_DIALOG_SETTINGS
         );
 

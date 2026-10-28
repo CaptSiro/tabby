@@ -77,7 +77,7 @@ class TimeWidget extends TabbyWidget {
         this.#config = config;
         this.setConfig(config);
 
-        this.#display = jsml.div("w-time");
+        this.#display = html.element(html`<div class="w-time"></div>`);
 
         // update clock
         this.#interval = setInterval(() => {
@@ -101,30 +101,48 @@ class TimeWidget extends TabbyWidget {
         date ??= new Date();
         this.#display.textContent = "";
 
-        jsml_addContent(this.#display, [
-            this.displayTime(date),
-            Optional(this.#config.showDate, this.displayDate(date))
-        ]);
+        jsml_addContent(this.#display, html`
+            ${this.displayTime(date)}
+            ${this.#config.showDate ? this.displayDate(date) : undefined}
+        `);
     }
 
     displayDate(date) {
         const time = time_parseDate(date);
-
-        return jsml.div("date", [
-            jsml.span("week-day day", time.dayName),
-            jsml.span("day", time.day + time.suffix),
-            jsml.span("month", time.monthName)
-        ]);
+        
+        return html.element(html`
+            <div class="date">
+                <span class="week-day day">
+                    ${time.dayName}
+                </span>
+                
+                <span class="day">
+                    ${time.day + time.suffix}
+                </span>
+                
+                <span class="month">
+                    ${time.monthName}
+                </span>
+            </div>
+        `);
     }
 
     displayTime(date) {
         const time = time_parseTime(date);
 
-        return jsml.div("time", [
-            jsml.span("hours", this.#config.isMilitaryTime ? time.hours : time.hoursPeriod),
-            jsml.span("minutes", time.minutes),
-            Optional(this.#config.showPeriod, time.period)
-        ]);
+        return html.element(html`
+            <div class="time">
+                <span class="hours">
+                    ${this.#config.isMilitaryTime ? time.hours : time.hoursPeriod}
+                </span>
+                
+                <span class="minutes">
+                    ${time.minutes}
+                </span>
+                
+                ${this.#config.showPeriod ? time.period : undefined}
+            </div>
+        `);
     }
 
     instantiate() {
@@ -132,36 +150,25 @@ class TimeWidget extends TabbyWidget {
     }
 
     inspect() {
-        return [
-            TitleInspector("Time"),
+        const useUpdateProp = (object, property) => {
+            const [get, set] = useProp(object, property);
 
-            HRInspector(),
-
-            CheckboxInspector(this.#config.showDate ?? false, value => {
-                this.#config.showDate = value;
+            return [get, x => {
+                const value = set(x);
                 this.updateDisplay();
                 tabby_save();
-                return true;
-            }, "Show date"),
-
-            CheckboxInspector(this.#config.showPeriod ?? false, value => {
-                this.#config.showPeriod = value;
-                this.updateDisplay();
-                tabby_save();
-                return true;
-            }, "Show AM/PM"),
-
-            CheckboxInspector(this.#config.isMilitaryTime ?? false, value => {
-                this.#config.isMilitaryTime = value;
-                this.updateDisplay();
-                tabby_save();
-                return true;
-            }, "Show as military time"),
+                return value;
+            }]
+        }
+        
+        return html`
+            <${TabbyTitle} title="Time" />
+            <${TabbyHR} />
             
-            // HRInspector(),
-            //
-            // ...this.createBaseWidgetSettings()
-        ];
+            <${TabbyCheckbox} state="${useUpdateProp(this.#config, 'showDate')}" label="Show date" />
+            <${TabbyCheckbox} state="${useUpdateProp(this.#config, 'showPeriod')}" label="Show AM/PM" />
+            <${TabbyCheckbox} state="${useUpdateProp(this.#config, 'isMilitaryTime')}" label="Show as military time" />
+        `;
     }
 
     save() {

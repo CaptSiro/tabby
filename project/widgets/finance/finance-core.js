@@ -364,20 +364,17 @@ class FinanceCatalog {
  * @return {HTMLElement}
  */
 function finance_CategoryBadge(category) {
-    const { div, span } = jsml;
-
-    return div(
-        {
-            class: "finance-badge",
-            title: category?.name ?? "Unknown category",
-            style: {
-                backgroundColor: category?.color ?? "gray"
-            }
-        },
-        category?.icon.length === 1
-            ? span(_, category.icon)
-            : nf(category?.icon || "nf-fa-question", "?")
-    );
+    return html.element(html`
+        <div
+            class="finance-badge"
+            title="${category?.name ?? "Unknown category"}"
+            style="${{ backgroundColor: category?.color ?? "gray" }}"
+        >
+            ${category?.icon?.length === 1
+                ? html`<span>${category.icon}</span>`
+                : nf(category?.icon || "nf-fa-question", "?")}
+        </div>
+    `);
 }
 
 /**
@@ -389,33 +386,38 @@ function finance_CategoryBadge(category) {
  * @return {HTMLElement}
  */
 function finance_MovementRow(movement, catalog, onClick) {
-    const { div, span } = jsml;
     const isInvestment = movement.type === FINANCE_TYPE_INVESTMENT;
     const category = catalog.categoryOf(movement);
     const name = category?.name ?? (isInvestment ? "Unknown fund" : "Unknown category");
     const note = isInvestment ? "" : movement.note;
     const isForeign = !isInvestment && movement.currency !== movement.baseCurrency;
 
-    return div({
-        class: "finance-movement " + movement.type,
-        title: FINANCE_TYPES[movement.type]?.name ?? "",
-        onClick
-    }, [
-        finance_CategoryBadge(category),
-        div("info", [
-            span("note", note || name),
-            span("date", finance_formatDate(movement.date) + (note ? " · " + name : ""))
-        ]),
-        div("amount", [
-            span(_, finance_formatMoney(movement.amount, movement.currency)),
-            Optional(isForeign,
-                span({
-                    class: "converted",
-                    title: `1 ${movement.currency} = ${movement.rate} ${movement.baseCurrency}`
-                }, "≈ " + finance_formatMoney(movement.amount * movement.rate, movement.baseCurrency))
-            )
-        ])
-    ]);
+    return html.element(html`
+        <div
+            class="${['finance-movement', movement.type]}"
+            title="${FINANCE_TYPES[movement.type]?.name ?? ""}"
+            onClick="${onClick}"
+        >
+            ${finance_CategoryBadge(category)}
+
+            <div class="info">
+                <span class="note">${note || name}</span>
+                <span class="date">${finance_formatDate(movement.date) + (note ? " · " + name : "")}</span>
+            </div>
+
+            <div class="amount">
+                <span>${finance_formatMoney(movement.amount, movement.currency)}</span>
+
+                ${isForeign
+                    ? html`
+                        <span class="converted" title="1 ${movement.currency} = ${movement.rate} ${movement.baseCurrency}">
+                            ${"≈ " + finance_formatMoney(movement.amount * movement.rate, movement.baseCurrency)}
+                        </span>
+                    `
+                    : undefined}
+            </div>
+        </div>
+    `);
 }
 
 /**
@@ -474,21 +476,22 @@ function finance_renderRing(ring, segments) {
 
 
 /**
- * `RadioGroupInspector` with the label on the left and the radios as a segmented slider on the right. The highlight
+ * `TabbyRadioGroup` with the label on the left and the radios as a segmented slider on the right. The highlight
  * slides to the checked radio.
  *
- * @param {Setter<string>} setter
- * @param {{ text: string, value: string, selected?: boolean }[]} radios
- * @param {string} label
+ * @param {{ radios: KeyValuePair[], setValue: Writter<string>, label?: string }} props
  * @return {HTMLElement}
  */
-function finance_RadioSlider(setter, radios, label) {
-    const group = RadioGroupInspector(setter, radios, label);
+function finance_RadioSlider(props) {
+    const group = TabbyRadioGroup(props);
     group.classList.add("finance-radio-slider");
 
     const items = [...group.querySelectorAll(".radio-container")];
-    const track = jsml.div("track", items);
-    track.style.setProperty("--count", String(items.length));
+    const track = html.element(html`
+        <div class="track" style="${{ '--count': String(items.length) }}">
+            ${items}
+        </div>
+    `);
 
     const update = () => {
         const index = items.findIndex(item => item.querySelector("input").checked);
@@ -523,71 +526,70 @@ function finance_openCategoryDialog(category = null) {
 
         let ret = undefined;
 
-        const preview = jsml.div("finance-category-preview");
-        const updatePreview = () => {
-            preview.textContent = "";
-            preview.append(finance_CategoryBadge(result));
-        };
+        // result is a plain object, the preview is redrawn whenever it changes
+        const [revision, setRevision] = signal(0);
+        const changed = () => setRevision(r => r + 1);
+
+        /**
+         * @param {"name" | "icon"} property
+         * @returns {Signal<string>}
+         */
+        const trimmed = property => [
+            () => result[property],
+            value => {
+                result[property] = value.trim();
+                changed();
+                return result[property];
+            }
+        ];
 
         const colorPicker = new ColorPicker(true);
         colorPicker.rootElement.addEventListener("pick", evt => {
             result.color = ColorPicker.toHex(evt.detail);
-            updatePreview();
+            changed();
         });
         colorPicker.setNewFromFormat(result.color);
 
+        const types = [FINANCE_TYPE_EXPENSE, FINANCE_TYPE_INCOME].map(type => ({
+            text: FINANCE_TYPES[type].name,
+            value: type,
+            selected: type === result.type
+        }));
+
+        const confirm = async () => {
+            if (result.name === "" || result.icon === "") {
+                await window_alert("Name and icon must be set", WINDOW_ALERT_SETTINGS);
+                return;
+            }
+
+            ret = result;
+            window_close(w);
+        };
+
         const w = window_create(
             "Category",
-            jsml.div("text-window", [
-                preview,
+            () => html`
+                <${window_TextWindow}>
+                    <div class="finance-category-preview">
+                        ${() => {
+                            revision();
+                            return finance_CategoryBadge(result);
+                        }}
+                    </div>
 
-                finance_RadioSlider(
-                    value => {
-                        result.type = value;
-                        return true;
-                    },
-                    [FINANCE_TYPE_EXPENSE, FINANCE_TYPE_INCOME].map(type => ({
-                        text: FINANCE_TYPES[type].name,
-                        value: type,
-                        selected: type === result.type
-                    })),
-                    "Type"
-                ),
+                    <${finance_RadioSlider} radios="${types}" setValue="${value => result.type = value}" label="Type" />
 
-                TextFieldInspector(result.name, value => {
-                    result.name = value.trim();
-                    updatePreview();
-                    return true;
-                }, "Name"),
+                    <${TabbyTextField} value="${trimmed("name")}" label="Name" />
+                    <${TabbyTextField} value="${trimmed("icon")}" label="Icon" placeholder="nf-fa-house" />
 
-                TextFieldInspector(result.icon, value => {
-                    result.icon = value.trim();
-                    updatePreview();
-                    return true;
-                }, "Icon", "nf-fa-house"),
+                    ${colorPicker.rootElement}
 
-                colorPicker.rootElement,
-
-                jsml.div("controls", [
-                    jsml.button({
-                        onClick: async () => {
-                            if (result.name === "" || result.icon === "") {
-                                await window_alert("Name and icon must be set", WINDOW_ALERT_SETTINGS);
-                                return;
-                            }
-
-                            ret = result;
-                            window_close(w);
-                        }
-                    }, 'Ok'),
-
-                    jsml.button({
-                        onClick: () => {
-                            window_close(w);
-                        }
-                    }, 'Cancel'),
-                ])
-            ]),
+                    <div class="controls">
+                        <button onClick="${confirm}">Ok</button>
+                        <button onClick="${() => window_close(w)}">Cancel</button>
+                    </div>
+                </>
+            `,
             {
                 isDialog: true,
                 isDraggable: true,
@@ -595,7 +597,6 @@ function finance_openCategoryDialog(category = null) {
             }
         );
 
-        updatePreview();
         w.addEventListener(EVENT_WINDOW_CLOSED, () => resolve(ret));
         window_open(w);
     });
@@ -611,7 +612,6 @@ function finance_openCategoryDialog(category = null) {
 function finance_openMovementDialog(props) {
     return new Promise(resolve => {
         const { type, categories, currency, submit, movement } = props;
-        const { div, button, span, input, select } = jsml;
         const isInvestment = type === FINANCE_TYPE_INVESTMENT;
 
         /** @type {Map<any, FinanceCategory>} */
@@ -624,29 +624,14 @@ function finance_openMovementDialog(props) {
         let isSubmitting = false;
         /** @type {Promise<boolean> | undefined} result of the dialog opened again after adding a category */
         let reopened = undefined;
-        /** @type {FinanceCategory|undefined} */
-        let selectedCategory = categoryMap.get(isInvestment ? movement?.fundId : movement?.categoryId);
+        /** @type {Signal<FinanceCategory | undefined>} */
+        const [selectedCategory, setSelectedCategory] = signal(
+            categoryMap.get(isInvestment ? movement?.fundId : movement?.categoryId)
+        );
 
-        const categoryButtons = categories.map(category => {
-            const btn = button({
-                class: cls("category", { selected: category.id === selectedCategory?.id }),
-                type: "button",
-                onClick: () => {
-                    for (const b of categoryButtons) {
-                        b.classList.toggle("selected", b === btn);
-                    }
-
-                    selectedCategory = category;
-                }
-            }, [
-                finance_CategoryBadge(category),
-                span(_, category.name)
-            ]);
-
-            return btn;
-        });
-
-        const dateInput = input({ type: "date", value: movement?.date ?? finance_isoDate() });
+        const dateInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input type="date" value="${movement?.date ?? finance_isoDate()}">
+        `));
         /**
          * @param {Date} date
          */
@@ -664,27 +649,33 @@ function finance_openMovementDialog(props) {
             setDate(date);
         }
 
-        const noteInput = input({ type: "text", value: movement?.note, placeholder: "Note" });
+        const noteInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input type="text" value="${movement?.note}" placeholder="Note">
+        `));
 
         const curr = movement?.currency ?? currency;
-        const currencySelect = select(_, FINANCE_CURRENCIES.map(c =>
-            new Option(c, c, _, c === curr)
-        ));
+        const currencySelect = /** @type {HTMLSelectElement} */ (html.element(html`
+            <select>
+                ${FINANCE_CURRENCIES.map(c => html`<option value="${c}" selected="${c === curr}">${c}</option>`)}
+            </select>
+        `));
 
-        const amountInput = input({
-            class: "amount-input",
-            type: "text",
-            inputmode: "decimal",
-            autocomplete: "off",
-            placeholder: "100",
-            onInput: () => setAmount(amountInput.value),
-            onKeydown: event => {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    trySubmit().then();
-                }
-            }
-        });
+        const amountInput = /** @type {HTMLInputElement} */ (html.element(html`
+            <input
+                class="amount-input"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder="100"
+                onInput="${() => setAmount(amountInput.value)}"
+                onKeydown="${event => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        trySubmit().then();
+                    }
+                }}"
+            >
+        `));
 
         const setAmount = value => {
             const sanitized = finance_sanitizeAmount(value);
@@ -713,35 +704,15 @@ function finance_openMovementDialog(props) {
             }
         };
 
-        const keypad = div("keypad", [
-            ..."789⌫456C123".split("").map(key => button({
-                class: cls("key", { function: /[0-9]/.test(key) }),
-                type: "button",
-                tabindex: "-1",
-                onClick: () => press(key)
-            }, key)),
-            button({ class: "key zero", type: "button", tabindex: "-1", onClick: () => press("0") }, "0"),
-            button({ class: "key", type: "button", tabindex: "-1", onClick: () => press(".") }, "."),
-            button({
-                class: "key submit",
-                type: "button",
-                tabindex: "-1",
-                title: FINANCE_TYPES[type][is(movement) ? 'edit' : 'add'],
-                onClick: () => trySubmit()
-            }, nf("nf-fa-check", "✓"))
-        ]);
-
-        // keep the focus (and the caret) in the amount input while clicking the keypad
-        keypad.addEventListener("mousedown", event => event.preventDefault());
-
         const trySubmit = async () => {
             if (isSubmitting) {
                 return;
             }
 
             const amount = Number(amountInput.value);
+            const category = selectedCategory();
 
-            if (!is(selectedCategory)) {
+            if (!is(category)) {
                 await window_alert(isInvestment ? "Select a fund" : "Select a category", WINDOW_ALERT_SETTINGS);
                 return;
             }
@@ -759,7 +730,7 @@ function finance_openMovementDialog(props) {
             isSubmitting = true;
             const result = await submit({
                 id: movement?.id,
-                categoryId: selectedCategory.id,
+                categoryId: category.id,
                 date: dateInput.value,
                 amount,
                 currency: currencySelect.value,
@@ -776,71 +747,132 @@ function finance_openMovementDialog(props) {
             window_close(w);
         };
 
-        const OffsetDateButton = offset => button(
-            { onClick: () => offsetDate(offset) },
-            offset > 0
-                ? "+" + offset
-                : String(offset)
-        );
+        const addCategory = () => {
+            // the dialog is opened again with the new category, its result is the result of this one
+            reopened = Promise.resolve().then(async () => {
+                const category = await finance_openCategoryDialog();
+                const created = is(category)
+                    ? await props.saveCategory(category)
+                    : undefined;
+
+                // a category of the other type is not offered
+                if (is(created) && (created.type ?? FINANCE_TYPE_EXPENSE) === type) {
+                    props.categories.push(created);
+                }
+
+                return finance_openMovementDialog(props);
+            });
+
+            window_close(w);
+        };
+
+        const remove = async () => {
+            const name = FINANCE_TYPES[type].name.toLowerCase();
+            if (await window_confirm(`Do you want to delete this ${name}?`) && await props.remove(movement)) {
+                saved = true;
+                window_close(w);
+            }
+        };
+
+        /**
+         * @param {{ offset: number }} props
+         * @returns {HTMLElement}
+         */
+        const OffsetDateButton = ({ offset }) => html.element(html`
+            <button onClick="${() => offsetDate(offset)}">
+                ${offset > 0
+                    ? "+" + offset
+                    : String(offset)}
+            </button>
+        `);
+
+        /**
+         * @param {{ key: string, class?: string, title?: string, onClick?: () => any, children?: JsmlContent }} props
+         * @returns {HTMLElement}
+         */
+        const Key = ({ key, class: c = undefined, title = undefined, onClick = () => press(key), children = key }) =>
+            html.element(html`
+                <button class="${['key', c]}" type="button" tabindex="-1" title="${title}" onClick="${onClick}">
+                    ${children}
+                </button>
+            `);
 
         const w = window_create(
             FINANCE_TYPES[type][is(movement) ? 'edit' : 'add'],
-            div("finance-dialog " + type, [
-                div("categories", [
-                    ...categoryButtons,
-                    Optional(is(props.saveCategory), button({
-                        class: "category",
-                        style: { padding: "9px" },
-                        onClick: () => {
-                            // the dialog is opened again with the new category, its result is the result of this one
-                            reopened = Promise.resolve().then(async () => {
-                                const category = await finance_openCategoryDialog();
-                                const created = is(category)
-                                    ? await props.saveCategory(category)
-                                    : undefined;
+            () => html`
+                <div class="${['finance-dialog', type]}">
+                    <div class="categories">
+                        ${categories.map(category => html`
+                            <button
+                                class="${['category', { selected: () => selectedCategory() === category }]}"
+                                type="button"
+                                onClick="${() => setSelectedCategory(category)}"
+                            >
+                                ${finance_CategoryBadge(category)}
+                                <span>${category.name}</span>
+                            </button>
+                        `)}
 
-                                // a category of the other type is not offered
-                                if (is(created) && (created.type ?? FINANCE_TYPE_EXPENSE) === type) {
-                                    props.categories.push(created);
-                                }
+                        <${Show} when="${is(props.saveCategory)}">
+                            <button class="category" style="${{ padding: "9px" }}" onClick="${addCategory}">
+                                ${nf('nf-fa-plus')}${" Add"}
+                            </button>
+                        </>
+                    </div>
 
-                                return finance_openMovementDialog(props);
-                            });
+                    <div>
+                        <${Labeled} label="Date" class="field">
+                            ${dateInput}
+                        </>
 
-                            window_close(w);
-                        },
-                    }, [nf('nf-fa-plus'), ' Add']))
-                ]),
-                div(_, [
-                    LabelAndComponentInspector("field", "Date", dateInput),
-                    div({ style: { display: "flex", marginTop: "2px", justifyContent: "space-between" } }, [
-                        OffsetDateButton(-3),
-                        OffsetDateButton(-2),
-                        OffsetDateButton(-1),
-                        button({ onClick: () => { dateInput.value = finance_isoDate(); } }, 'Now'),
-                        OffsetDateButton(+1),
-                        OffsetDateButton(+2),
-                        OffsetDateButton(+3),
-                    ])
-                ]),
-                Optional(!isInvestment, LabelAndComponentInspector("field", "Note", noteInput)),
-                div(_, [
-                    div("amount", [amountInput, currencySelect]),
-                    keypad,
-                ]),
-                Optional(is(movement) && is(props.remove), div("row", button({
-                    onClick: async () => {
-                        const name = FINANCE_TYPES[type].name.toLowerCase();
-                        if (await window_confirm(`Do you want to delete this ${name}?`) && await props.remove(movement)) {
-                            saved = true;
-                            window_close(w);
-                        }
-                    }
-                }, [
-                    nf('nf-oct-trash'),
-                    ' Delete'
-                ])))
-            ]),
+                        <div style="${{ display: "flex", marginTop: "2px", justifyContent: "space-between" }}">
+                            <${OffsetDateButton} offset="${-3}" />
+                            <${OffsetDateButton} offset="${-2}" />
+                            <${OffsetDateButton} offset="${-1}" />
+                            <button onClick="${() => dateInput.value = finance_isoDate()}">Now</button>
+                            <${OffsetDateButton} offset="${+1}" />
+                            <${OffsetDateButton} offset="${+2}" />
+                            <${OffsetDateButton} offset="${+3}" />
+                        </div>
+                    </div>
+
+                    <${Show} when="${!isInvestment}">
+                        <${Labeled} label="Note" class="field">
+                            ${noteInput}
+                        </>
+                    </>
+
+                    <div>
+                        <div class="amount">
+                            ${amountInput}
+                            ${currencySelect}
+                        </div>
+
+                        <!-- keeps the focus (and the caret) in the amount input while clicking the keypad -->
+                        <div class="keypad" onMousedown="${event => event.preventDefault()}">
+                            ${"789⌫456C123".split("").map(key => html`
+                                <${Key} key="${key}" class="${/[0-9]/.test(key) ? "function" : undefined}" />
+                            `)}
+                            <${Key} key="0" class="zero" />
+                            <${Key} key="." />
+                            <${Key}
+                                key="submit"
+                                class="submit"
+                                title="${FINANCE_TYPES[type][is(movement) ? 'edit' : 'add']}"
+                                onClick="${() => trySubmit()}"
+                            >${nf("nf-fa-check", "✓")}</>
+                        </div>
+                    </div>
+
+                    <${Show} when="${is(movement) && is(props.remove)}">
+                        <div class="row">
+                            <button onClick="${remove}">
+                                ${nf('nf-oct-trash')}${" Delete"}
+                            </button>
+                        </div>
+                    </>
+                </div>
+            `,
             FINANCE_DIALOG_SETTINGS
         );
 
