@@ -921,6 +921,6 @@ tabby_addPrefab(
     tabby_PrefabElement({
         builder: calendar_builder,
         icon: nf('nf-md-calendar_check'),
-        time: "Calendar"
+        name: "Calendar"
     })
 );

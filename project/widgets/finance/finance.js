@@ -1447,6 +1447,6 @@ tabby_addPrefab(
     tabby_PrefabElement({
         builder: finance_builder,
         icon: nf('nf-fa-money_check_dollar'),
-        time: "Finance"
+        name: "Finance"
     })
 );

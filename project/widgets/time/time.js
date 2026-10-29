@@ -65,9 +65,16 @@ function time_parseTime(date) {
 class TimeWidget extends TabbyWidget {
     /** @type {TimeWidgetConfig} */
     #config;
+    
+    /** @type {Signal<TimeWidgetConfig>} */
+    $configSignal;
+    
     /** @type {HTMLElement} */
     #display;
     #interval;
+    
+    /** @type {Signal<Date>} */
+    #clock;
 
 
 
@@ -76,73 +83,74 @@ class TimeWidget extends TabbyWidget {
 
         this.#config = config;
         this.setConfig(config);
+        
+        this.$configSignal = signal(config);
 
-        this.#display = html.element(html`<div class="w-time"></div>`);
+        this.#clock = signal(_, { equals: (a, b) => a?.getTime() === b?.getTime() });
+        this.#display = this.Display();
 
-        // update clock
         this.#interval = setInterval(() => {
             const date = new Date();
             if (date.getSeconds() !== 0) {
                 return;
             }
 
-            this.updateDisplay(date);
+            const [_, setClock] = this.#clock;
+            setClock(date);
         }, 1000);
-
-        this.updateDisplay();
     }
-
-
-
-    /**
-     * @param {Date | undefined} date
-     */
-    updateDisplay(date = undefined) {
-        date ??= new Date();
-        this.#display.textContent = "";
-
-        jsml_addContent(this.#display, html`
-            ${this.displayTime(date)}
-            ${this.#config.showDate ? this.displayDate(date) : undefined}
-        `);
-    }
-
-    displayDate(date) {
-        const time = time_parseDate(date);
+    
+    
+    
+    Display() {
+        const [getConfig] = this.$configSignal;
+        const [getClock] = this.#clock;
+ 
+        const [time, setTime] = signal();
+        const [date, setDate] = signal();
         
-        return html.element(html`
-            <div class="date">
-                <span class="week-day day">
-                    ${time.dayName}
-                </span>
+        batch(() => {
+            const clock = getClock() ?? new Date();
+            
+            setTime(time_parseTime(clock));
+            setDate(time_parseDate(clock));
+        });
+        
+        return html`
+            <div class="w-time">
+                <div class="time">
+                    <span class="hours">
+                        ${() => getConfig().isMilitaryTime
+                            ? time().hours
+                            : time().hoursPeriod}
+                    </span>
+                    
+                    <span class="minutes">
+                        ${() => time().minutes}
+                    </span>
+                    
+                    <${Show} when="${() => getConfig().showPeriod}">
+                        ${() => time().period}
+                    </>
+                </div>
                 
-                <span class="day">
-                    ${time.day + time.suffix}
-                </span>
-                
-                <span class="month">
-                    ${time.monthName}
-                </span>
+                <${Show} when="${() => getConfig().showDate}">
+                    <div class="date">
+                        <span class="week-day day">
+                            ${() => date().dayName}
+                        </span>
+                        
+                        <span class="day">
+                            ${() => (x => x.day + x.suffix)(date())}
+                        </span>
+                        
+                        <span class="month">
+                            ${() => date().monthName}
+                        </span>
+                    </div>
+                </>
             </div>
-        `);
-    }
-
-    displayTime(date) {
-        const time = time_parseTime(date);
-
-        return html.element(html`
-            <div class="time">
-                <span class="hours">
-                    ${this.#config.isMilitaryTime ? time.hours : time.hoursPeriod}
-                </span>
-                
-                <span class="minutes">
-                    ${time.minutes}
-                </span>
-                
-                ${this.#config.showPeriod ? time.period : undefined}
-            </div>
-        `);
+        `;
     }
 
     instantiate() {
